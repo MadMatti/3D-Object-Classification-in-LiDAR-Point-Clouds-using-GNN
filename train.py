@@ -6,7 +6,6 @@ import seaborn as sn
 from torch import optim
 from torchsummary import summary
 from matplotlib import pyplot as plt
-#from torch.utils.data import DataLoader
 from torch_geometric.loader import DataLoader
 from sklearn import metrics as sk_metrics
 from model import *
@@ -14,6 +13,8 @@ from dataset import Dataset
 
 CLASSES = ["bathtub", "bed", "chair", "desk", "dresser", "monitor", "night_stand", "sofa", "table", "toilet"]
 
+import torch_geometric
+print(torch_geometric.__version__)
 
 def save_model():
     path = "./last.pt"
@@ -43,7 +44,7 @@ def train(model, num_epochs, dataset, device):
 
     best_acc_value = 0.0
 
-    dataset_train, dataset_valid = dataset.split(0.8)
+    dataset_train, dataset_valid = dataset, dataset
 
     print("Training set size:", len(dataset_train))
     print("Validation set size:", len(dataset_valid))
@@ -149,7 +150,7 @@ if __name__ == "__main__":
 
     device = "cpu"#torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    DATASET_PATH = '/tmp_workspace/3d/modelnet10_hdf5_2048/train.h5'
+    DATASET_PATH = '/tmp_workspace/3d/modelnet10_hdf5_2048'
     dataset = Dataset(DATASET_PATH)
 
     model = GraphClassifier(hidden_dim=64, output_dim=len(CLASSES))
