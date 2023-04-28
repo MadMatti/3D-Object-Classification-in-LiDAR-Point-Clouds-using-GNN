@@ -2,6 +2,7 @@ import h5py
 
 from torch.utils.data import Dataset as TorchDataset
 import torch
+import torch_geometric.utils as utils
 
 import networkx as nx
 import numpy as np
@@ -22,11 +23,13 @@ def knn_graph(data, k):
     # Sort distance matrix in ascending order and get indices of points
     idx = np.argsort(D, axis=1)
 
-    # Construct kNN graph
+    # Construct kNN graph, use 3D points as node features
     G = nx.Graph()
     for i in range(data.shape[0]):
         for j in idx[i, 1:k+1]:
             G.add_edge(i, j, weight=D[i, j])
+    for i in range(data.shape[0]):
+        G.nodes[i]['x'] = data[i]
 
     return G
 
@@ -55,6 +58,8 @@ class Dataset(TorchDataset):
             import pickle
             with open(path + '.cache', 'rb') as f:
                 self.data, self.label = pickle.load(f)
+            
+            print(self.data[0])
         else:
             # Load from file
             f = h5py.File(path, 'r')
@@ -67,13 +72,16 @@ class Dataset(TorchDataset):
                 item = item[::4, :]
 
                 # Convert the point cloud to a graph where each node represents a point and each edge represents the distance between two points
-                G = knn_graph(item, 20)
+                G = knn_graph(item, 5)
 
                 # Convert the graph to an adjacency matrix
-                A = nx.adjacency_matrix(G).todense().astype(np.float32)
+                #A = nx.adjacency_matrix(G).todense().astype(np.float32)
 
                 # Add 1 dimension for the channel
-                A = np.expand_dims(A, axis=0)
+                #A = np.expand_dims(A, axis=0)
+
+                # Convert to torch geometric data
+                A = utils.from_networkx(G)
 
                 # Plot the adjacency matrix
                 #import matplotlib.pyplot as plt
@@ -143,7 +151,7 @@ class Dataset(TorchDataset):
         Tuple[torch.Tensor, torch.Tensor]
             The data and the target of the item
         """
-        return self.data[index], self.label[index]
+        return self.data[index], torch.Tensor(self.label[index])
 
     def get_class_weights(self):
         """

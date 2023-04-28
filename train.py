@@ -6,9 +6,10 @@ import seaborn as sn
 from torch import optim
 from torchsummary import summary
 from matplotlib import pyplot as plt
-from torch.utils.data import DataLoader
+#from torch.utils.data import DataLoader
+from torch_geometric.loader import DataLoader
 from sklearn import metrics as sk_metrics
-from model import Yofo
+from model import *
 from dataset import Dataset
 
 CLASSES = ["bathtub", "bed", "chair", "desk", "dresser", "monitor", "night_stand", "sofa", "table", "toilet"]
@@ -47,8 +48,8 @@ def train(model, num_epochs, dataset, device):
     print("Training set size:", len(dataset_train))
     print("Validation set size:", len(dataset_valid))
 
-    train_loader = DataLoader(dataset=dataset_train, batch_size=10, shuffle=True)
-    valid_loader = DataLoader(dataset=dataset_valid, batch_size=10, shuffle=True)
+    train_loader = DataLoader(dataset=dataset_train, batch_size=64, shuffle=True)
+    valid_loader = DataLoader(dataset=dataset_valid, batch_size=64, shuffle=True)
 
     print("Begin training...")
     for epoch in range(1, num_epochs + 1):
@@ -66,8 +67,13 @@ def train(model, num_epochs, dataset, device):
         for x, y_true in train_loader:
             # for data in enumerate(train_loader, 0):
             optimizer.zero_grad()  # zero the parameter gradients
-            y_pred = model(x.to(device))  # predict output from the model
-            train_loss = loss_fn(y_pred, y_true.to(device))  # calculate loss for the predicted output
+
+            # predict output from the model
+            y_pred = model(x.to(device))
+
+            # calculate loss for the predicted output
+            train_loss = loss_fn(y_pred, y_true.to(device))
+
             train_loss.backward()  # backpropagate the loss
             optimizer.step()  # adjust parameters based on the calculated gradients
             running_train_loss += train_loss.item()  # track the loss value
@@ -141,14 +147,14 @@ if __name__ == "__main__":
     matplotlib.use('TkAgg')
     # open log.txt in append mode
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = "cpu"#torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    model = Yofo(len(CLASSES)).to(device)
-    #model.load_state_dict(torch.load("best.pt", map_location=device))
-
-    print("The model will be running on", device, "device\n")
-    summary(model, (1, 512, 512))
     DATASET_PATH = '/tmp_workspace/3d/modelnet10_hdf5_2048/train.h5'
     dataset = Dataset(DATASET_PATH)
+
+    model = GraphClassifier(hidden_dim=64, output_dim=len(CLASSES))
+
+    print("The model will be running on", device, "device\n")
+    #summary(model, (input_dim,))
 
     train(model, 1000, dataset, device)
