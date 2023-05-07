@@ -95,6 +95,7 @@ def train(model, num_epochs, dataset, device):
                 val_loss = loss_fn(y_pred, y_true.to(device))
                 running_vall_loss += val_loss.item()
                 x_all.extend(x.x.cpu().numpy())
+                #print(y_true)
 
                 y_pred_all.extend(
                     y_pred.argmax(dim=1, keepdim=True)
@@ -103,8 +104,7 @@ def train(model, num_epochs, dataset, device):
                     y_pred.cpu().numpy().max(axis=1))
 
                 y_true_all.extend(
-                    y_true.to(device).argmax(dim=1, keepdim=True)
-                        .flatten().cpu().numpy())
+                    y_true.to(device).flatten().cpu().numpy())
 
         val_loss_value = running_vall_loss / len(valid_loader)
         print(len(y_true_all), len(y_pred_all))
@@ -119,7 +119,8 @@ def train(model, num_epochs, dataset, device):
 
         wrong = []
         correct = []
-        for i in range(0, len(x_all)):
+        #print(len(x_all), len(y_pred_all), len(y_true_all), len(y_conf_all))
+        for i in range(0, len(y_pred_all)):
             if y_pred_all[i] != y_true_all[i]:
                 wrong.append(i)
             else:
@@ -129,13 +130,13 @@ def train(model, num_epochs, dataset, device):
         mean_conf_t = np.mean(np.array(y_conf_all)[correct])
         plt.title(f"Confusion Matrix {mean_conf_f:.2f} {mean_conf_t:.2f}")
 
-        for i in wrong[:7]:
-            plt.subplot(2, 2, 3)
-            plt.imshow(x_all[i].squeeze())
-            plt.title(f"true:{CLASSES[y_true_all[i]]} pred:{CLASSES[y_pred_all[i]]} {y_conf_all[i]:.2f}")
+        # for i in wrong[:7]:
+        #     plt.subplot(2, 2, 3)
+        #     plt.imshow(x_all[i].squeeze())
+        #     plt.title(f"true:{CLASSES[y_true_all[i]]} pred:{CLASSES[y_pred_all[i]]} {y_conf_all[i]:.2f}")
 
-            plt.show(block=False)
-            plt.pause(0.5)
+        #     plt.show(block=False)
+        #     plt.pause(0.5)
 
 
         # Save the model if the accuracy is the best

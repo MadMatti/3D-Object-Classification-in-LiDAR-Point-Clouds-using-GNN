@@ -146,7 +146,6 @@ class GraphClassifier(nn.Module):
     
     def forward(self, x):
         x, edge_index, batch = x.x, x.edge_index, x.batch
-        #x = gnn_global_mean_pool(x, batch)
 
         # Embedding
         x = self.gnn1(x, edge_index)
@@ -170,4 +169,3 @@ class GraphSage(nn.Module):
         super(GraphSage, self).__init__()
         self.conv1 = gnn.SAGEConv(dim_in, dim_h)
         self.conv2 = gnn.SAGEConv(dim_h, dim_out)
-        self.optim
