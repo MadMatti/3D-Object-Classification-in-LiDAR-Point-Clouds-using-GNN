@@ -65,7 +65,7 @@ def train(model, num_epochs, dataset, device):
 
         # Training Loop
         model.train()
-        print(train_loader[2])
+        
         for x, y_true in train_loader:
             # for data in enumerate(train_loader, 0):
             optimizer.zero_grad()  # zero the parameter gradients

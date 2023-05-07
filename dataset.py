@@ -90,51 +90,52 @@ class Dataset(GeometricDataset):
             import pickle
             with open(path + '.cache', 'rb') as f:
                 self.data, self.label = pickle.load(f)
-            
-        # Load from file
-        f = h5py.File(path, 'r')
+        
+        else:
+            # Load from file
+            f = h5py.File(path, 'r')
 
-        # convert to adjacency matrix
-        for i in range(len(f['data'])):
-            item = f['data'][i]
+            # convert to adjacency matrix
+            for i in range(len(f['data'])):
+                item = f['data'][i]
 
-            # Downsample the point cloud
-            item = item[::4, :]
+                # Downsample the point cloud
+                item = item[::4, :]
 
-            # Convert the point cloud to a graph where each node represents a point and each edge represents the distance between two points
-            G = knn_graph(item, 1)
+                # Convert the point cloud to a graph where each node represents a point and each edge represents the distance between two points
+                G = knn_graph(item, 1)
 
-            # Convert the graph to an adjacency matrix
-            #A = nx.adjacency_matrix(G).todense().astype(np.float32)
+                # Convert the graph to an adjacency matrix
+                #A = nx.adjacency_matrix(G).todense().astype(np.float32)
 
-            # Add 1 dimension for the channel
-            #A = np.expand_dims(A, axis=0)
+                # Add 1 dimension for the channel
+                #A = np.expand_dims(A, axis=0)
 
-            # Convert to torch geometric data
-            A = utils.from_networkx(G)
+                # Convert to torch geometric data
+                A = utils.from_networkx(G)
 
-            # Add label
-            A.y = torch.tensor(f['label'][i], dtype=torch.long)
+                # Add label
+                A.y = torch.tensor(f['label'][i], dtype=torch.long)
 
-            # Convert the label to a one-hot vector
-            label = np.zeros(10)
-            label[f['label'][i]] = 1
-            self.label.append(label)
+                # Convert the label to a one-hot vector
+                label = np.zeros(10)
+                label[f['label'][i]] = 1
+                self.label.append(label)
 
-            # Plot the adjacency matrix
-            #import matplotlib.pyplot as plt
-            #plt.imshow(A)
-            #plt.title(f['label'][i])
-            #plt.show()
+                # Plot the adjacency matrix
+                #import matplotlib.pyplot as plt
+                #plt.imshow(A)
+                #plt.title(f['label'][i])
+                #plt.show()
 
-            self.data.append(A)
+                self.data.append(A)
 
-        f.close()
+            f.close()
 
-        # Save to cache
-        import pickle
-        with open(path + '.cache', 'wb') as f:
-            pickle.dump((self.data, self.label), f)
+            # Save to cache
+            import pickle
+            with open(path + '.cache', 'wb') as f:
+                pickle.dump((self.data, self.label), f)
 
         # Print the number of items
         print('Number of items:', len(self.data))
