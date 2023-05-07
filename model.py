@@ -1,6 +1,7 @@
 from torch import nn
 from torch_geometric import nn as gnn
 from torch.functional import F
+from torch_geometric.nn import global_mean_pool as gnn_global_mean_pool
 
 class Yofoold(nn.Module):
     """
@@ -145,9 +146,7 @@ class GraphClassifier(nn.Module):
     
     def forward(self, x):
         x, edge_index, batch = x.x, x.edge_index, x.batch
-
-        print(x.shape)
-        print(edge_index.shape)
+        #x = gnn_global_mean_pool(x, batch)
 
         # Embedding
         x = self.gnn1(x, edge_index)
@@ -155,6 +154,7 @@ class GraphClassifier(nn.Module):
         x = self.gnn2(x, edge_index)
         x = F.relu(x)
         x = self.gnn3(x, edge_index)
+        x = gnn_global_mean_pool(x, batch)
         x = F.softmax(x, dim=1)
 
         # Pooling

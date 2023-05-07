@@ -65,8 +65,10 @@ def train(model, num_epochs, dataset, device):
 
         # Training Loop
         model.train()
-        
-        for x, y_true in train_loader:
+
+        for data_batch in train_loader:
+            x = data_batch
+            y_true = data_batch.y
             # for data in enumerate(train_loader, 0):
             optimizer.zero_grad()  # zero the parameter gradients
 
@@ -86,11 +88,13 @@ def train(model, num_epochs, dataset, device):
         # Validation Loop
         with torch.no_grad():
             model.eval()
-            for x, y_true in valid_loader:
+            for data_batch in valid_loader:
+                x = data_batch
+                y_true = data_batch.y
                 y_pred = model(x.to(device))
                 val_loss = loss_fn(y_pred, y_true.to(device))
                 running_vall_loss += val_loss.item()
-                x_all.extend(x.cpu().numpy())
+                x_all.extend(x.x.cpu().numpy())
 
                 y_pred_all.extend(
                     y_pred.argmax(dim=1, keepdim=True)
@@ -103,6 +107,7 @@ def train(model, num_epochs, dataset, device):
                         .flatten().cpu().numpy())
 
         val_loss_value = running_vall_loss / len(valid_loader)
+        print(len(y_true_all), len(y_pred_all))
         acc_value = sk_metrics.accuracy_score(y_true_all, y_pred_all)
 
         cf_matrix = sk_metrics.confusion_matrix(y_true_all, y_pred_all, normalize="true")
