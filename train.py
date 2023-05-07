@@ -15,6 +15,8 @@ CLASSES = ["bathtub", "bed", "chair", "desk", "dresser", "monitor", "night_stand
 
 import torch_geometric
 print(torch_geometric.__version__)
+import torch_geometric
+print(torch_geometric.__version__)
 
 def save_model():
     path = "./last.pt"
