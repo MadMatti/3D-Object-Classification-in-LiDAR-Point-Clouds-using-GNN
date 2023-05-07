@@ -71,4 +71,3 @@ A = nx.adjacency_matrix(G).todense()
 plt.imshow(A)
 plt.show()
 
-

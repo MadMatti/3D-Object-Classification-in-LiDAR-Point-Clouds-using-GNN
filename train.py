@@ -15,6 +15,8 @@ CLASSES = ["bathtub", "bed", "chair", "desk", "dresser", "monitor", "night_stand
 
 import torch_geometric
 print(torch_geometric.__version__)
+import torch_geometric
+print(torch_geometric.__version__)
 
 def save_model():
     path = "./last.pt"
@@ -65,7 +67,10 @@ def train(model, num_epochs, dataset, device):
 
         # Training Loop
         model.train()
-        for x, y_true in train_loader:
+
+        for data_batch in train_loader:
+            x = data_batch
+            y_true = data_batch.y
             # for data in enumerate(train_loader, 0):
             optimizer.zero_grad()  # zero the parameter gradients
 
@@ -85,11 +90,14 @@ def train(model, num_epochs, dataset, device):
         # Validation Loop
         with torch.no_grad():
             model.eval()
-            for x, y_true in valid_loader:
+            for data_batch in valid_loader:
+                x = data_batch
+                y_true = data_batch.y
                 y_pred = model(x.to(device))
                 val_loss = loss_fn(y_pred, y_true.to(device))
                 running_vall_loss += val_loss.item()
-                x_all.extend(x.cpu().numpy())
+                x_all.extend(x.x.cpu().numpy())
+                #print(y_true)
 
                 y_pred_all.extend(
                     y_pred.argmax(dim=1, keepdim=True)
@@ -98,10 +106,10 @@ def train(model, num_epochs, dataset, device):
                     y_pred.cpu().numpy().max(axis=1))
 
                 y_true_all.extend(
-                    y_true.to(device).argmax(dim=1, keepdim=True)
-                        .flatten().cpu().numpy())
+                    y_true.to(device).flatten().cpu().numpy())
 
         val_loss_value = running_vall_loss / len(valid_loader)
+        print(len(y_true_all), len(y_pred_all))
         acc_value = sk_metrics.accuracy_score(y_true_all, y_pred_all)
 
         cf_matrix = sk_metrics.confusion_matrix(y_true_all, y_pred_all, normalize="true")
@@ -113,7 +121,8 @@ def train(model, num_epochs, dataset, device):
 
         wrong = []
         correct = []
-        for i in range(0, len(x_all)):
+        #print(len(x_all), len(y_pred_all), len(y_true_all), len(y_conf_all))
+        for i in range(0, len(y_pred_all)):
             if y_pred_all[i] != y_true_all[i]:
                 wrong.append(i)
             else:
@@ -123,13 +132,13 @@ def train(model, num_epochs, dataset, device):
         mean_conf_t = np.mean(np.array(y_conf_all)[correct])
         plt.title(f"Confusion Matrix {mean_conf_f:.2f} {mean_conf_t:.2f}")
 
-        for i in wrong[:7]:
-            plt.subplot(2, 2, 3)
-            plt.imshow(x_all[i].squeeze())
-            plt.title(f"true:{CLASSES[y_true_all[i]]} pred:{CLASSES[y_pred_all[i]]} {y_conf_all[i]:.2f}")
+        # for i in wrong[:7]:
+        #     plt.subplot(2, 2, 3)
+        #     plt.imshow(x_all[i].squeeze())
+        #     plt.title(f"true:{CLASSES[y_true_all[i]]} pred:{CLASSES[y_pred_all[i]]} {y_conf_all[i]:.2f}")
 
-            plt.show(block=False)
-            plt.pause(0.5)
+        #     plt.show(block=False)
+        #     plt.pause(0.5)
 
 
         # Save the model if the accuracy is the best
@@ -150,7 +159,7 @@ if __name__ == "__main__":
 
     device = "cpu"#torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    DATASET_PATH = '/tmp_workspace/3d/modelnet10_hdf5_2048'
+    DATASET_PATH = '/Users/mattiaevangelisti/Documents/'
     dataset = Dataset(DATASET_PATH)
 
     model = GraphClassifier(hidden_dim=64, output_dim=len(CLASSES))
