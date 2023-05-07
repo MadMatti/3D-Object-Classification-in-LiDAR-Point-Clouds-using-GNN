@@ -1,12 +1,9 @@
 from typing import List, Tuple, Union
-from typing import List, Tuple, Union
 import h5py
 
 from torch.utils.data import Dataset as TorchDataset
 from torch_geometric.data import Dataset as GeometricDataset, Data
-from torch_geometric.data import Dataset as GeometricDataset, Data
 import torch
-import torch_geometric.utils as utils
 import torch_geometric.utils as utils
 
 import networkx as nx
@@ -30,13 +27,11 @@ def knn_graph(data, k):
     # Sort distance matrix in ascending order and get indices of points
     idx = np.argsort(D, axis=1)
 
-    # Construct kNN graph, use 3D points as node features, use 3D points as node features
+    # Construct kNN graph, use 3D points as node features
     G = nx.Graph()
     for i in range(data.shape[0]):
         for j in idx[i, 1:k+1]:
             G.add_edge(i, j, weight=D[i, j])
-    for i in range(data.shape[0]):
-        G.nodes[i]['x'] = data[i]
     for i in range(data.shape[0]):
         G.nodes[i]['x'] = data[i]
 
@@ -53,7 +48,6 @@ class Dataset(GeometricDataset):
         target : torch.Tensor
             The target of the dataset
         """
-        self.path = path
         self.path = path
         self.data = []
         self.label = []
@@ -80,37 +74,11 @@ class Dataset(GeometricDataset):
 
         # Convert to tensor
         weights = torch.Tensor(weights)
-        
-        super(Dataset, self).__init__(path)
-    
-    def processed_file_names(self) -> str | List[str] | Tuple:
-        return ['data.pt', 'label.pt']
-
-    def get_class_weights(self):
-        """
-        Get the weights for each class
-        Returns
-        -------
-        torch.Tensor
-            The weights for each class
-        """
-
-        # Compute the weights
-        weights = 1 / np.sum(self.label, axis=0)
-
-        # Normalize the weights
-        weights = weights / np.sum(weights)
-
-        # Convert to tensor
-        weights = torch.Tensor(weights)
 
         return weights
     
     def process(self):
-        return weights
-    
-    def process(self):
-        if self.self.path is None:
+        if self.path is None:
             return
         
         path = self.path + '/train.h5'
@@ -138,21 +106,10 @@ class Dataset(GeometricDataset):
                 G = knn_graph(item, 1)
 
                 # Convert the graph to an adjacency matrix
-                ##A = nx.adjacency_matrix(G).todense().astype(np.float32)
+                #A = nx.adjacency_matrix(G).todense().astype(np.float32)
 
                 # Add 1 dimension for the channel
-                ##A = np.expand_dims(A, axis=0)
-
-                # Convert to torch geometric data
-                A = utils.from_networkx(G)
-
-                # Add label
-                A.y = torch.tensor(f['label'][i], dtype=torch.long)
-
-                # Convert the label to a one-hot vector
-                label = np.zeros(10)
-                label[f['label'][i]] = 1
-                self.label.append(label)
+                #A = np.expand_dims(A, axis=0)
 
                 # Convert to torch geometric data
                 A = utils.from_networkx(G)
