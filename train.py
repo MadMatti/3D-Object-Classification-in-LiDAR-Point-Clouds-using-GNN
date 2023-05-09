@@ -3,6 +3,7 @@ import matplotlib
 import numpy as np
 import pandas as pd
 import seaborn as sn
+from tqdm import tqdm
 from torch import optim
 from matplotlib import pyplot as plt
 from torch_geometric.loader import DataLoader
@@ -12,6 +13,8 @@ from dataset import Dataset
 
 CLASSES = ["bathtub", "bed", "chair", "desk", "dresser", "monitor", "night_stand", "sofa", "table", "toilet"]
 
+import torch_geometric
+print(torch_geometric.__version__)
 import torch_geometric
 print(torch_geometric.__version__)
 
@@ -57,7 +60,7 @@ def train(model, num_epochs, dataset, device):
     valid_loader = DataLoader(dataset=dataset_valid, batch_size=64, shuffle=True)
 
     print("Begin training...")
-    for epoch in range(1, num_epochs + 1):
+    for epoch in tqdm(range(1, num_epochs + 1)):
         x_all = []
         y_true_all = []
         y_pred_all = []
@@ -159,14 +162,15 @@ if __name__ == "__main__":
     matplotlib.use('TkAgg')
     # open log.txt in append mode
 
-    device = "cpu"#torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device('cpu')
 
     DATASET_PATH = '/Users/hamzaali/Workspace/3D-Object-Detection/3D-Object-Detection-in-LiDAR-Point-Clouds-using-GNN'
     dataset = Dataset(DATASET_PATH)
 
     model = GraphClassifier(hidden_dim=64, output_dim=len(CLASSES))
+    model2 = GraphSage(hidden_dim=64, output_dim=len(CLASSES))
 
     print("The model will be running on", device, "device\n")
     #summary(model, (input_dim,))
 
-    train(model, 1000, dataset, device)
+    train(model2, 1000, dataset, device)

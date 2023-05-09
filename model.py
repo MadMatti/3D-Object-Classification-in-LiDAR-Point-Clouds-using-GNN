@@ -165,7 +165,23 @@ class GraphClassifier(nn.Module):
 
 class GraphSage(nn.Module):
     '''GraphSAGE'''
-    def __init__(self, dim_in, dim_h, dim_out):
+    def __init__(self, hidden_dim, output_dim):
         super(GraphSage, self).__init__()
-        self.conv1 = gnn.SAGEConv(dim_in, dim_h)
-        self.conv2 = gnn.SAGEConv(dim_h, dim_out)
+
+        self.conv1 = gnn.SAGEConv(-1, hidden_dim)
+        self.conv2 = gnn.SAGEConv(hidden_dim, hidden_dim)
+        self.conv3 = gnn.SAGEConv(hidden_dim, output_dim)
+
+    def forward(self, x):
+        x, edge_index, batch = x.x, x.edge_index, x.batch
+
+        # Embedding
+        x = self.conv1(x, edge_index)
+        x = F.relu(x)
+        x = self.conv2(x, edge_index)
+        x = F.relu(x)
+        x = self.conv3(x, edge_index)
+        x = gnn_global_mean_pool(x, batch)
+        x = F.softmax(x, dim=1)
+
+        return x
