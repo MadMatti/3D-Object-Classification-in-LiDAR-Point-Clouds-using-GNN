@@ -164,9 +164,9 @@ if __name__ == "__main__":
     dataset = Dataset(DATASET_PATH)
 
     model = GraphClassifier(hidden_dim=64, output_dim=len(CLASSES))
-    model2 = GraphSage(hidden_dim=64, output_dim=len(CLASSES))
+    GraphSage_ = GraphSage(hidden_dim=64, output_dim=len(CLASSES))
 
     print("The model will be running on", device, "device\n")
     #summary(model, (input_dim,))
 
-    train(model2, 1000, dataset, device)
+    train(GraphSage_, 1000, dataset, device)
