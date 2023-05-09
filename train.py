@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 import seaborn as sn
 from torch import optim
-from torchsummary import summary
 from matplotlib import pyplot as plt
 from torch_geometric.loader import DataLoader
 from sklearn import metrics as sk_metrics
@@ -45,6 +44,11 @@ def train(model, num_epochs, dataset, device):
     best_acc_value = 0.0
 
     dataset_train, dataset_valid = dataset, dataset
+    print("Training set size:", len(dataset_train))
+    print("Validation set size:", len(dataset_valid))
+    # print a sample of the dataset
+    print(dataset_train[0])
+
 
     print("Training set size:", len(dataset_train))
     print("Validation set size:", len(dataset_valid))
@@ -157,7 +161,7 @@ if __name__ == "__main__":
 
     device = "cpu"#torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    DATASET_PATH = '/Users/mattiaevangelisti/Documents/'
+    DATASET_PATH = '/Users/hamzaali/Workspace/3D-Object-Detection/3D-Object-Detection-in-LiDAR-Point-Clouds-using-GNN'
     dataset = Dataset(DATASET_PATH)
 
     model = GraphClassifier(hidden_dim=64, output_dim=len(CLASSES))
