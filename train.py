@@ -3,6 +3,7 @@ import matplotlib
 import numpy as np
 import pandas as pd
 import seaborn as sn
+from tqdm import tqdm
 from torch import optim
 from torchsummary import summary
 from matplotlib import pyplot as plt
@@ -55,7 +56,7 @@ def train(model, num_epochs, dataset, device):
     valid_loader = DataLoader(dataset=dataset_valid, batch_size=64, shuffle=True)
 
     print("Begin training...")
-    for epoch in range(1, num_epochs + 1):
+    for epoch in tqdm(range(1, num_epochs + 1)):
         x_all = []
         y_true_all = []
         y_pred_all = []
@@ -157,14 +158,15 @@ if __name__ == "__main__":
     matplotlib.use('TkAgg')
     # open log.txt in append mode
 
-    device = "cpu"#torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device('cpu')
 
     DATASET_PATH = '/Users/mattiaevangelisti/Documents/'
     dataset = Dataset(DATASET_PATH)
 
     model = GraphClassifier(hidden_dim=64, output_dim=len(CLASSES))
+    model2 = GraphSage(hidden_dim=64, output_dim=len(CLASSES))
 
     print("The model will be running on", device, "device\n")
     #summary(model, (input_dim,))
 
-    train(model, 1000, dataset, device)
+    train(model2, 1000, dataset, device)
