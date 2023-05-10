@@ -3,6 +3,7 @@ import matplotlib
 import numpy as np
 import pandas as pd
 import seaborn as sn
+import time
 from tqdm import tqdm
 from torch import optim
 from torchsummary import summary
@@ -18,6 +19,33 @@ import torch_geometric
 print(torch_geometric.__version__)
 import torch_geometric
 print(torch_geometric.__version__)
+
+def plot_curves(train_loss_list, val_loss_list, acc_list, title, training_time):
+    # plot train and validation loss on the same plot and accurcy on another
+    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+    fig.tight_layout(pad=3.0)
+
+    axs[0].plot(train_loss_list, label="Train Loss", color='seagreen')
+    axs[0].plot(val_loss_list, label="Validation Loss", color='indianred')
+    axs[0].set_title("Train and Validation Loss")
+    axs[0].set_xlabel("Epoch")
+    axs[0].set_ylabel("Loss")
+    axs[0].legend()
+    axs[0].grid(True)
+
+    axs[1].plot(acc_list, label="Accuracy", color='seagreen')
+    axs[1].set_title("Accuracy")
+    axs[1].set_xlabel("Epoch")
+    axs[1].set_ylabel("Accuracy")
+    axs[1].legend()
+    axs[1].grid(True)
+
+    plt.figtext(0.5, 0.01, "Training time: {:.2f} seconds".format(training_time), ha="center", fontsize=12)
+
+
+    plt.suptitle("Learning curves for " + title, y=0.98)
+    plt.subplots_adjust(top=0.85)
+    plt.show()
 
 def save_model():
     path = "./last.pt"
@@ -37,7 +65,7 @@ def predict(model, x):
 # Training Function
 def train(model, num_epochs, dataset, device):
     plt.show(block=False)
-    fig = plt.figure(figsize=(10, 10))
+    # fig = plt.figure(figsize=(10, 10))
 
     class_weights = dataset.get_class_weights()
 
@@ -55,7 +83,12 @@ def train(model, num_epochs, dataset, device):
     train_loader = DataLoader(dataset=dataset_train, batch_size=64, shuffle=True)
     valid_loader = DataLoader(dataset=dataset_valid, batch_size=64, shuffle=True)
 
+    train_loss_list = []
+    val_loss_list = []
+    acc_list = []
+
     print("Begin training...")
+    start_time = time.time()
     for epoch in tqdm(range(1, num_epochs + 1)):
         x_all = []
         y_true_all = []
@@ -110,15 +143,15 @@ def train(model, num_epochs, dataset, device):
                     y_true.to(device).flatten().cpu().numpy())
 
         val_loss_value = running_vall_loss / len(valid_loader)
-        print(len(y_true_all), len(y_pred_all))
+        # print(len(y_true_all), len(y_pred_all))
         acc_value = sk_metrics.accuracy_score(y_true_all, y_pred_all)
 
-        cf_matrix = sk_metrics.confusion_matrix(y_true_all, y_pred_all, normalize="true")
-        df_cm = pd.DataFrame(cf_matrix, index=CLASSES, columns=CLASSES)
+        # cf_matrix = sk_metrics.confusion_matrix(y_true_all, y_pred_all, normalize="true")
+        # df_cm = pd.DataFrame(cf_matrix, index=CLASSES, columns=CLASSES)
 
-        plt.subplot(2, 1, 1)
+        # plt.subplot(2, 1, 1)
 
-        sn.heatmap(df_cm, annot=True)
+        # sn.heatmap(df_cm, annot=True)
 
         wrong = []
         correct = []
@@ -131,7 +164,7 @@ def train(model, num_epochs, dataset, device):
 
         mean_conf_f = np.mean(np.array(y_conf_all)[wrong])
         mean_conf_t = np.mean(np.array(y_conf_all)[correct])
-        plt.title(f"Confusion Matrix {mean_conf_f:.2f} {mean_conf_t:.2f}")
+        # plt.title(f"Confusion Matrix {mean_conf_f:.2f} {mean_conf_t:.2f}")
 
         # for i in wrong[:7]:
         #     plt.subplot(2, 2, 3)
@@ -150,6 +183,15 @@ def train(model, num_epochs, dataset, device):
             # Print the statistics of the epoch
         print('Completed training epoch', epoch, 'Training Loss is: %.4f' % train_loss_value,
             'Validation Loss is: %.4f' % val_loss_value, 'Accuracy is: %.4f' % acc_value)
+        train_loss_list.append(train_loss_value)
+        val_loss_list.append(val_loss_value)
+        acc_list.append(acc_value)
+
+    training_time = time.time() - start_time
+
+    # Plot the loss and accuracy values
+    title = "GraphSiege"
+    plot_curves(train_loss_list, val_loss_list, acc_list, title, training_time)
 
     plt.close()
 
@@ -169,4 +211,4 @@ if __name__ == "__main__":
     print("The model will be running on", device, "device\n")
     #summary(model, (input_dim,))
 
-    train(model2, 1000, dataset, device)
+    train(model2, 10, dataset, device)
