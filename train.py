@@ -6,6 +6,7 @@ import seaborn as sn
 import time
 from tqdm import tqdm
 from torch import optim
+from torch.utils.data import random_split
 from torchsummary import summary
 from matplotlib import pyplot as plt
 from torch_geometric.loader import DataLoader
@@ -47,6 +48,33 @@ def plot_curves(train_loss_list, val_loss_list, acc_list, title, training_time):
     plt.subplots_adjust(top=0.85)
     plt.show()
 
+def evaluate(model, dataset_test, device):
+    test_loader = DataLoader(dataset=dataset_test, batch_size=64, shuffle=False)
+    
+    y_true_all = []
+    y_pred_all = []
+
+    with torch.no_grad():
+        model.eval()
+        for data_batch in test_loader:
+            x = data_batch
+            y_true = data_batch.y
+            y_pred = model(x.to(device))
+
+            y_true_all.extend(
+                y_true.to(device).flatten().cpu().numpy())
+            
+            y_pred_all.extend(
+                y_pred.argmax(dim=1, keepdim=True)
+                    .flatten().cpu().numpy())
+
+    accuracy = sk_metrics.accuracy_score(y_true_all, y_pred_all)
+    precision = sk_metrics.precision_score(y_true_all, y_pred_all, average='weighted')
+    recall = sk_metrics.recall_score(y_true_all, y_pred_all, average='weighted')
+    f1_score = sk_metrics.f1_score(y_true_all, y_pred_all, average='weighted')
+
+    return accuracy, precision, recall, f1_score
+
 def save_model():
     path = "./last.pt"
     torch.save(model.state_dict(), path)
@@ -75,13 +103,17 @@ def train(model, num_epochs, dataset, device):
 
     best_acc_value = 0.0
 
-    dataset_train, dataset_valid = dataset, dataset
+    train_size = int(0.75 * len(dataset))
+    val_test_size = len(dataset) - train_size
+    val_size = test_size = int(val_test_size / 2)
+    train_dataset, val_test_dataset = random_split(dataset, [train_size, val_test_size])
+    val_dataset, test_dataset = random_split(val_test_dataset, [val_size, test_size])
 
-    print("Training set size:", len(dataset_train))
-    print("Validation set size:", len(dataset_valid))
+    print("Training set size:", len(train_dataset))
+    print("Validation set size:", len(val_dataset))
 
-    train_loader = DataLoader(dataset=dataset_train, batch_size=64, shuffle=True)
-    valid_loader = DataLoader(dataset=dataset_valid, batch_size=64, shuffle=True)
+    train_loader = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True)
+    valid_loader = DataLoader(dataset=val_dataset, batch_size=64, shuffle=True)
 
     train_loss_list = []
     val_loss_list = []
@@ -190,8 +222,14 @@ def train(model, num_epochs, dataset, device):
     training_time = time.time() - start_time
 
     # Plot the loss and accuracy values
-    title = "GraphSiege"
+    title = "GraphSage"
     plot_curves(train_loss_list, val_loss_list, acc_list, title, training_time)
+
+    accuracy, precision, recall, f1 = evaluate(model, test_dataset, device)
+    print("Accuracy: ", accuracy)
+    print("Precision: ", precision)
+    print("Recall: ", recall)
+    print("F1: ", f1)
 
     plt.close()
 
