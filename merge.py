@@ -2,7 +2,7 @@ import h5py
 import numpy as np
 
 # ModelNet10
-DATASET_PATH_1 = '/tmp_workspace/3d/modelnet10_hdf5_2048/train0.h5'
+DATASET_PATH_1 = '/tmp_workspace/3d/modelnet10_hdf5_2048/train.h5'
 DATASET_PATH_2 = '/tmp_workspace/3d/modelnet10_hdf5_2048/train1.h5'
 
 # Load 1st Part of the Dataset

@@ -1,10 +1,10 @@
 import h5py
 
 # ModelNet10
-DATASET_PATH = '/tmp_workspace/3d/modelnet10_hdf5_2048'
+DATASET_PATH = '/Users/hamzaali/Workspace/3D-Object-Detection/3D-Object-Detection-in-LiDAR-Point-Clouds-using-GNN'
 
 # Load Part of the Dataset
-f = h5py.File(DATASET_PATH + '/train0.h5', 'r')
+f = h5py.File(DATASET_PATH + '/train.h5', 'r')
 
 # List all groups
 print("Keys: %s" % f.keys())
