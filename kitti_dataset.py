@@ -3,26 +3,27 @@ import open3d as o3d
 import numpy as np
 import imageio
 
-# path_to_point_cloud = '/Volumes/Z8 2/3D-Object-Detection/cropped/000000.bin'
-#
-# point_cloud_data = np.fromfile(path_to_point_cloud, '<f4')  # little-endian float32
-# point_cloud_data = np.reshape(point_cloud_data, (-1, 4))    # x, y, z, r
-#
-# # Create Open3D point cloud object
+path_to_point_cloud = '/Volumes/Z8 2/3D-Object-Detection/cropped/000000.bin'
+
+point_cloud_data = np.fromfile(path_to_point_cloud, '<f4')  # little-endian float32
+point_cloud_data = np.reshape(point_cloud_data, (-1, 4))    # x, y, z, r
+
+# Create Open3D point cloud object
 # pcd = o3d.geometry.PointCloud()
 # pcd.points = o3d.utility.Vector3dVector(point_cloud_data[:, :3])
-#
-# # Visualize the point cloud
+
+# Visualize the point cloud
 # o3d.visualization.draw_geometries([pcd])
 
+pc_data = np.fromfile(path_to_point_cloud, '<f4')
+pc_data = np.reshape(pc_data, (-1, 4))
+print("Data Shape: ", pc_data.shape)
 
-""" Remove points outside the image coordinates
 
-    This script is from https://github.com/qianguih/voxelnet/blob/master/data/crop.py
+
+""" Remove points outside the object coordinates
+
 """
-
-
-
 
 CAM = 2
 
@@ -118,7 +119,8 @@ CALIB_ROOT = '/Volumes/Z8 2/3D-Object-Detection/data_object_calib/training/calib
 # path to the folder for saving cropped point clouds
 SAVE_ROOT = '/Volumes/Z8 2/3D-Object-Detection/cropped/'
 
-for frame in range(0, 1):
+# Crop the first 10 images
+for frame in range(0, 10):
 
     print('--- processing {0:06d}'.format(frame))
 
@@ -127,7 +129,7 @@ for frame in range(0, 1):
     calib_dir = os.path.join(CALIB_ROOT, '{0:06d}.txt'.format(frame))
 
     points = align_img_and_pc(img_dir, pc_dir, calib_dir)
-    print("Points : ", points.shape)
+    print("Points : ", points[:, :4].shape)
 
     output_name = os.path.join(SAVE_ROOT, '{0:06d}.bin'.format(frame))
     points[:, :4].astype('float32').tofile(output_name)

@@ -2,7 +2,7 @@ import operator
 import os
 
 # path to the label folder
-LABEL_ROOT = '/Volumes/Z8/3D-Object-Detection/training/label_2'
+LABEL_ROOT = '/Volumes/Z8 2/3D-Object-Detection/training/label_2'
 
 
 def type_of_objects():
@@ -25,3 +25,16 @@ def type_of_objects():
 label_stat = type_of_objects()
 print('{0:d} types of objects'.format(len(label_stat)))
 print(label_stat)
+
+import h5py
+
+filename = "/Users/hamzaali/Workspace/3D-Object-Detection/3D-Object-Detection-in-LiDAR-Point-Clouds-using-GNN/train.h5/train.h5"
+
+h5 = h5py.File(filename,'r')
+
+data = h5['data']
+label = h5['label']
+print(data.shape)
+print(label.shape)
+
+h5.close()
