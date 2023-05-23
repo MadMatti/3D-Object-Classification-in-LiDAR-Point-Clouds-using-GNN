@@ -76,12 +76,12 @@ class Dataset(GeometricDataset):
             label_files.sort()
 
             # Load nx graphs from pkls
-            for i in range(len(graph_files)):
+            for graph_file, label_file in zip(graph_files, label_files):
                 # Load the graph
-                G = pickle.load(open(os.path.join(self.path, 'X', graph_files[i]), 'rb'))
+                G = pickle.load(open(os.path.join(self.path, 'X', graph_file), 'rb'))
 
                 # Load the label
-                with open(os.path.join(self.path, 'y', label_files[i]), 'r') as f:
+                with open(os.path.join(self.path, 'y', label_file), 'r') as f:
                     label = f.read()
                     label = label.strip()
                 label_id = class_names_to_id[label]
@@ -116,5 +116,3 @@ class Dataset(GeometricDataset):
     
     def get(self, idx):
         return self.data[idx]
-    
-data = Dataset('/tmp_workspace/KITTI/processed')
