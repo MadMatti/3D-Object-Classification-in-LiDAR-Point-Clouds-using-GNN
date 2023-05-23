@@ -12,9 +12,6 @@ from model import *
 from dataset import Dataset
 from datasets.kitti import Dataset as KittiDataset
 
-# CLASSES = ["bathtub", "bed", "chair", "desk", "dresser", "monitor", "night_stand", "sofa", "table", "toilet"]
-CLASSES = ["Car", "Pedestrian", "Cyclist"]
-
 def save_model():
     path = "./last.pt"
     torch.save(model.state_dict(), path)
