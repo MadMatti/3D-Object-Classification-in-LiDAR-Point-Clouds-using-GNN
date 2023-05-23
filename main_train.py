@@ -8,9 +8,13 @@ from torch import optim
 from matplotlib import pyplot as plt
 from torch_geometric.loader import DataLoader
 from sklearn import metrics as sk_metrics
+from sklearn.model_selection import train_test_split
 from model import *
 from dataset import Dataset
 from datasets.kitti import Dataset as KittiDataset
+
+import warnings
+warnings.filterwarnings("ignore")
 
 def save_model():
     path = "./last.pt"
@@ -40,7 +44,9 @@ def train(model, num_epochs, dataset, device, classes):
 
     best_acc_value = 0.0
 
-    dataset_train, dataset_valid = dataset, dataset
+    # dataset_train, dataset_valid = dataset, dataset
+    dataset_train, dataset_valid = train_test_split(dataset, test_size=0.2)
+
     print("Training set size:", len(dataset_train))
     print("Validation set size:", len(dataset_valid))
     # print a sample of the dataset
