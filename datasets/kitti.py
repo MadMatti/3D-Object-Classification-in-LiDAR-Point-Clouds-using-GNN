@@ -5,6 +5,7 @@ from torch_geometric.data import Dataset as GeometricDataset, Data
 import torch
 import torch_geometric.utils as utils
 
+from ordered_set import OrderedSet
 import numpy as np
 import pickle
 from tqdm import tqdm
@@ -27,12 +28,13 @@ class Dataset(GeometricDataset):
         self.path = path
         self.data = []
         self.label = []
+        self.classes = OrderedSet()
         
         super(Dataset, self).__init__(path)
     
     def processed_file_names(self) -> str | List[str] | Tuple:
         return ['data.pt', 'label.pt']
-
+    
     def get_class_weights(self):
         """
         Get the weights for each class
@@ -53,7 +55,7 @@ class Dataset(GeometricDataset):
 
         return weights
     
-    def process_sample(self, graph_file, label_file, class_names_to_id):
+    def process_sample(self, graph_file, label_file):
         # Load the graph
         with open(graph_file, "rb") as f:
             G = pickle.load(f)
@@ -62,7 +64,8 @@ class Dataset(GeometricDataset):
         with open(label_file, 'r') as f:
             label = f.read()
             label = label.strip()
-        label_id = class_names_to_id[label]
+
+        label_id = self.classes.add(label)
 
         # Convert the graph to pytorch geometric data
         A = utils.from_networkx(G)
@@ -71,8 +74,8 @@ class Dataset(GeometricDataset):
         A.y = torch.tensor(label_id, dtype=torch.long)
 
         # Convert the label to a one-hot vector
-        label = np.zeros(len(class_names_to_id.items()))
-        label[label_id] = 1
+        #label = np.zeros(len(class_names_to_id.items()))
+        #label[label_id] = 1
 
         return A, label
 
@@ -89,9 +92,6 @@ class Dataset(GeometricDataset):
 
         else:
             print("Cache not found")
-            # Get class mapping
-            class_id_to_names = kitti_preprocess.CLASS_IDS_TO_NAMES
-            class_names_to_id = kitti_preprocess.CLASS_NAMES_TO_IDS
 
             # List all files in the directory
             graph_files = [os.path.join(self.path, 'X', x) for x in os.listdir(os.path.join(self.path, 'X'))]
@@ -102,15 +102,16 @@ class Dataset(GeometricDataset):
             label_files.sort()
 
             # Parallelize the loop using multiprocessing
-            pool = multiprocessing.Pool()
+            pool = multiprocessing.Pool(processes=30)
             results = []
             for graph_file, label_file in zip(graph_files, label_files):
-                results.append(pool.apply_async(self.process_sample, (graph_file, label_file, class_names_to_id)))
+                results.append(pool.apply_async(self.process_sample, (graph_file, label_file)))
 
             for result in tqdm(results, desc="Progress", total=len(results)):
                 A, label = result.get()
                 self.data.append(A)
                 self.label.append(label)
+                self.classes.add(label)
 
             # Save to cache
             with open(self.path + '.cache', 'wb') as f:

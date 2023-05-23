@@ -28,7 +28,7 @@ def predict(model, x):
 
 
 # Training Function
-def train(model, num_epochs, dataset, device):
+def train(model, num_epochs, dataset, device, classes):
     plt.show(block=False)
     fig = plt.figure(figsize=(10, 10))
 
@@ -112,7 +112,7 @@ def train(model, num_epochs, dataset, device):
         acc_value = sk_metrics.accuracy_score(y_true_all, y_pred_all)
 
         cf_matrix = sk_metrics.confusion_matrix(y_true_all, y_pred_all, normalize="true")
-        df_cm = pd.DataFrame(cf_matrix, index=CLASSES, columns=CLASSES)
+        df_cm = pd.DataFrame(cf_matrix, index=classes, columns=classes)
 
         plt.subplot(2, 1, 1)
 
@@ -160,11 +160,13 @@ if __name__ == "__main__":
 
     DATASET_PATH = '/tmp_workspace/KITTI/processed'
     dataset = KittiDataset(DATASET_PATH)
+    classes = dataset.classes
+    print(classes)
 
-    GNN = GraphClassifier(hidden_dim=64, output_dim=len(CLASSES))
-    graphSage = GraphSage(hidden_dim=64, output_dim=len(CLASSES))
+    GNN = GraphClassifier(hidden_dim=64, output_dim=len(classes))
+    graphSage = GraphSage(hidden_dim=64, output_dim=len(classes))
 
     print("The model will be running on", device, "device\n")
     #summary(model, (input_dim,))
 
-    train(GNN, 50, dataset, device)
+    train(GNN, 50, dataset, device, classes)

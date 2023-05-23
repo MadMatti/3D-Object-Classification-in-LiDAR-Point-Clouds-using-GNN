@@ -209,6 +209,34 @@ def preprocess_sample(point_cloud_file, label_file, calib_file, save_path, sampl
         with open(os.path.join(save_path, "y", f"label_{sample_idx}_{j}.txt"), "w") as f:
             f.write(class_name)
 
+        # Plot the point cloud in 3D
+        if DEBUG:          
+            print("Class: {}, Number of points: {}".format(class_name, num_points))
+
+            fig = plt.figure()
+
+            # Plot the point cloud and the smaller object point cloud in two separate figures
+            ax = fig.add_subplot(121, projection='3d')
+            plt.title("Point cloud (downsampled 1/5)")
+            plt.xlabel("X")
+            plt.ylabel("Y")
+            ax.set_zlabel("Z")
+            ax.scatter(point_cloud[::5,0], point_cloud[::5,1], point_cloud[::5,2], s=0.1, c=z_coords[::5])
+            # Set aspect ratio to 'equal'
+            ax.set_aspect('equal')
+            # Draw the 3D bounding box
+            draw_box_3d(ax, bbox_3d)
+
+            ax = fig.add_subplot(122, projection='3d')
+            plt.title("Isolated object (" + class_name + ")")
+            plt.xlabel("X")
+            plt.ylabel("Y")
+            ax.set_zlabel("Z")
+            ax.scatter(point_cloud_in_box[:,0], point_cloud_in_box[:,1], point_cloud_in_box[:,2], s=2, c=point_cloud_in_box[:,2])
+            # Set aspect ratio to 'equal'
+            ax.set_aspect('equal')
+            plt.show()
+
 def preprocess(path_dataset, save_path, k=10):
     print("Preprocessing KITTI dataset")
 
@@ -237,7 +265,7 @@ def preprocess(path_dataset, save_path, k=10):
     assert len(point_cloud_files) == len(label_files) == len(calib_files)
 
     # Parallelize the loop using multiprocessing
-    pool = multiprocessing.Pool()
+    pool = multiprocessing.Pool(processes=1 if DEBUG else None)
     results = []
     for i, (graph_file, label_file, calib_file) in enumerate(zip(point_cloud_files, label_files, calib_files)):
         results.append(pool.apply_async(preprocess_sample, (graph_file, label_file, calib_file, save_path, i)))
