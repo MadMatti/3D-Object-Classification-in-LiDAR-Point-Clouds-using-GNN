@@ -7,6 +7,9 @@ import torch_geometric.utils as utils
 
 import numpy as np
 import pickle
+from tqdm import tqdm
+import multiprocessing
+import os
 
 from preprocess import kitti as kitti_preprocess
 
@@ -50,55 +53,64 @@ class Dataset(GeometricDataset):
 
         return weights
     
+    def process_sample(self, graph_file, label_file, class_names_to_id):
+        # Load the graph
+        with open(graph_file, "rb") as f:
+            G = pickle.load(f)
+
+        # Load the label
+        with open(label_file, 'r') as f:
+            label = f.read()
+            label = label.strip()
+        label_id = class_names_to_id[label]
+
+        # Convert the graph to pytorch geometric data
+        A = utils.from_networkx(G)
+
+        # Add label
+        A.y = torch.tensor(label_id, dtype=torch.long)
+
+        # Convert the label to a one-hot vector
+        label = np.zeros(len(class_names_to_id.items()))
+        label[label_id] = 1
+
+        return A, label
+
     def process(self):
+        print("Processing dataset")
         if self.path is None:
             return
-        
-        import os
-        if os.path.exists(self.path + '.cache'):
+
+        if os.path.exists(self.path + ".cache"):
             # Load from cache
-            print('Loading from cache...')
+            print("Cache found!, loading from cache")
             with open(self.path + '.cache', 'rb') as f:
                 self.data, self.label = pickle.load(f)
-        
+
         else:
+            print("Cache not found")
             # Get class mapping
             class_id_to_names = kitti_preprocess.CLASS_IDS_TO_NAMES
             class_names_to_id = kitti_preprocess.CLASS_NAMES_TO_IDS
-            n_classes = len(class_id_to_names.items())
 
             # List all files in the directory
-            graph_files = os.listdir(os.path.join(self.path, 'X'))
-            label_files = os.listdir(os.path.join(self.path, 'y'))
+            graph_files = [os.path.join(self.path, 'X', x) for x in os.listdir(os.path.join(self.path, 'X'))]
+            label_files = [os.path.join(self.path, 'y', x) for x in os.listdir(os.path.join(self.path, 'y'))]
 
             # Sort the files
             graph_files.sort()
             label_files.sort()
 
-            # Load nx graphs from pkls
+            # Parallelize the loop using multiprocessing
+            pool = multiprocessing.Pool()
+            results = []
             for graph_file, label_file in zip(graph_files, label_files):
-                # Load the graph
-                G = pickle.load(open(os.path.join(self.path, 'X', graph_file), 'rb'))
+                results.append(pool.apply_async(self.process_sample, (graph_file, label_file, class_names_to_id)))
 
-                # Load the label
-                with open(os.path.join(self.path, 'y', label_file), 'r') as f:
-                    label = f.read()
-                    label = label.strip()
-                label_id = class_names_to_id[label]
-
-                # Convert the graph to pytorch geometric data
-                A = utils.from_networkx(G)
-
-                # Add label
-                A.y = torch.tensor(label_id, dtype=torch.long)
-
-                # Convert the label to a one-hot vector
-                label = np.zeros(n_classes)
-                label[label_id] = 1
-                
-                self.label.append(label)
-
+            for result in tqdm(results, desc="Progress", total=len(results)):
+                A, label = result.get()
                 self.data.append(A)
+                self.label.append(label)
 
             # Save to cache
             with open(self.path + '.cache', 'wb') as f:

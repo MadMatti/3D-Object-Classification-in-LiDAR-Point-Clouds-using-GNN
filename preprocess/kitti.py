@@ -7,8 +7,8 @@ from tqdm import tqdm
 
 DEBUG = False
 
-CLASS_NAMES_TO_IDS = {"Car": 1, "Pedestrian": 2, "Cyclist": 4}
-CLASS_IDS_TO_NAMES = {1: "Car", 2: "Pedestrian", 4: "Cyclist"}
+CLASS_NAMES_TO_IDS = {"Car": 0, "Pedestrian": 1, "Cyclist": 2, "Truck": 3}
+CLASS_IDS_TO_NAMES = {0: "Car", 1: "Pedestrian", 2: "Cyclist", 3: "Truck"}
 
 NUM_VERTEXES_PER_SAMPLE = 500
 NUM_EDGES_PER_VERTEX = 5
