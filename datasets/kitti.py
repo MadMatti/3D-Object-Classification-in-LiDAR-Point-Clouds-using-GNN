@@ -8,9 +8,11 @@ from ordered_set import OrderedSet
 import numpy as np
 import pickle
 from tqdm import tqdm
-import multiprocessing
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import networkx as nx
+
+import concurrent.futures
 
 class Dataset(GeometricDataset):
     def __init__(self, path=None):
@@ -107,17 +109,21 @@ class Dataset(GeometricDataset):
             graph_files.sort()
             label_files.sort()
 
-            # Parallelize the loop using multiprocessing
-            pool = multiprocessing.Pool()
-            results = []
-            for graph_file, label_file in zip(graph_files, label_files):
-                results.append(pool.apply_async(self.process_sample, (graph_file, label_file)))
+            # Create a ThreadPoolExecutor with the desired number of threads
+            with ThreadPoolExecutor() as executor:
+                # Create a list to store the futures
+                futures = []
 
-            for result in tqdm(results, desc="Progress", total=len(results)):
-                A, label = result.get()
-                self.data.append(A)
-                self.label.append(label)
-                self.classes.add(label)
+                # Submit tasks to the executor for each pair of graph_file and label_file
+                for graph_file, label_file in zip(graph_files, label_files):
+                    future = executor.submit(self.process_sample, graph_file, label_file)
+                    futures.append(future)
+
+                for future in tqdm(as_completed(futures), desc="Progress", total=len(futures)):
+                    A, label = future.result()
+                    self.data.append(A)
+                    self.label.append(label)
+                    self.classes.add(label)
 
             # Save to cache
             with open(self.path + '.cache', 'wb') as f:
@@ -127,7 +133,7 @@ class Dataset(GeometricDataset):
         print('Number of items:', len(self.data))
 
         # Print the class distribution
-        print('Class distribution:', np.sum(self.label, axis=0))
+        #print('Class distribution:', np.sum(self.label, axis=0))
 
     
     def len(self):
