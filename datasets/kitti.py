@@ -55,19 +55,24 @@ class Dataset(GeometricDataset):
 
         return weights
     
-    def process_sample(self, graph_file, label_file):
+    def process_sample_old(self, graph_file, label_file):
         # Load the graph
         with open(graph_file, "rb") as f:
             G = pickle.load(f)
 
+        # Retrieve the edge indexes and attributes
+        edge_index, edge_weight = zip(*nx.get_edge_attributes(G, "weight").items())
+
         # Convert to numpy
         adjacency_matrix = nx.to_numpy_array(G)  # Convert graph to adjacency matrix
-        edge_index = np.array(G.edges())  # Extract edge indices as a NumPy array
         node_labels = np.array(list(G.nodes()))  # Extract node labels as a NumPy array
+        edge_index = np.array(edge_index)
+        edge_weight = np.array(edge_weight)
 
         adjacency_matrix = torch.from_numpy(adjacency_matrix)
-        edge_index = torch.from_numpy(edge_index).t().contiguous()  # Transpose edge index and ensure it's contiguous
+        edge_index = torch.from_numpy(edge_index)
         node_labels = torch.from_numpy(node_labels)
+        edge_weight = torch.from_numpy(edge_weight)
 
         # Load the label
         with open(label_file, 'r') as f:
@@ -76,11 +81,29 @@ class Dataset(GeometricDataset):
 
         label_id = self.classes.add(label)
 
-        A = Data(x=node_labels, edge_index=edge_index, edge_attr=None, y=label_id, adj=adjacency_matrix)
+        A = Data(x=node_labels, edge_index=edge_index, edge_attr=edge_weight, y=label_id, adj=adjacency_matrix)
         
         # Convert the label to a one-hot vector
         #label = np.zeros(len(class_names_to_id.items()))
         #label[label_id] = 1
+
+        return A, label
+
+    def process_sample(self, graph_file, label_file):
+        # Load the graph
+        with open(graph_file, "rb") as f:
+            G = pickle.load(f)
+            # Load the label
+        with open(label_file, 'r') as f:
+            label = f.read()
+            label = label.strip()
+        label_id = self.classes.add(label)
+
+        # Convert the graph to pytorch geometric data
+        A = utils.from_networkx(G)
+
+        # Add label
+        A.y = torch.tensor(label_id, dtype=torch.long)
 
         return A, label
 
@@ -107,7 +130,7 @@ class Dataset(GeometricDataset):
             label_files.sort()
 
             # Create a ThreadPoolExecutor with the desired number of threads
-            with ThreadPoolExecutor() as executor:
+            with ThreadPoolExecutor(max_workers=5) as executor:
                 # Create a list to store the futures
                 futures = []
 
