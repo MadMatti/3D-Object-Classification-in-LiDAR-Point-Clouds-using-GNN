@@ -3,13 +3,14 @@ import numpy as np
 import utils
 import matplotlib.pyplot as plt
 import pickle
+from tqdm import tqdm
 
 DEBUG = False
 
 CLASS_NAMES_TO_IDS = {"Car": 1, "Pedestrian": 2, "Cyclist": 4}
 CLASS_IDS_TO_NAMES = {1: "Car", 2: "Pedestrian", 4: "Cyclist"}
 
-NUM_VERTEXES_PER_SAMPLE = 100
+NUM_VERTEXES_PER_SAMPLE = 500
 NUM_EDGES_PER_VERTEX = 5
 
 def load_velodyne(bin_path):
@@ -127,6 +128,8 @@ def parse_calib(file_path):
     return calib_feature_dict, matrix_tr_velo_to_cam, R_cam_to_rect
 
 def process_and_save_graphs(path_dataset, save_path, k=10):
+    print("Preprocessing KITTI dataset")
+
     POINT_CLOUDS_PATH = os.path.join(path_dataset, "velodyne")
     LABELS_PATH = os.path.join(path_dataset, "label_2")
     CALIB_PATH = os.path.join(path_dataset, "calib")
@@ -156,7 +159,7 @@ def process_and_save_graphs(path_dataset, save_path, k=10):
     dataset = []
 
     # Iterate over all the files
-    for i in range(len(point_clouds_files)):
+    for i in tqdm(range(len(point_clouds_files)), desc="Progress"):
         # Get the file name
         point_cloud_file = point_clouds_files[i]
         label_file = labels_files[i]
@@ -172,6 +175,27 @@ def process_and_save_graphs(path_dataset, save_path, k=10):
 
         # Load the point cloud
         point_cloud = load_velodyne(point_cloud_path)
+
+        # Filter ouliers
+        z_coords = np.array(point_cloud[:,2])
+        z_coords_std = np.std(z_coords)
+        z_coords_mean = np.mean(z_coords)
+
+        # Remove outliers outside 2 standard deviations above and 1 standard deviation below the mean
+        upper_threshold = z_coords_mean + z_coords_std * 2
+        lower_threshold = z_coords_mean - z_coords_std * 2
+
+        mask = (z_coords >= lower_threshold) & (z_coords <= upper_threshold)
+
+        point_cloud = point_cloud[mask]
+        z_coords = z_coords[mask]
+
+        # Remove points that are too far away
+        center = np.mean(point_cloud, axis=0)
+        distance = np.sqrt(np.sum((point_cloud - center)**2, axis=1))
+        mask = distance < 15 # 15 meters
+        point_cloud = point_cloud[mask]
+        z_coords = z_coords[mask]
 
         # Load the 3d object labels
         objects = load_labels(label_path, matrix_tr_velo_to_cam, R_cam_to_rect)
@@ -238,7 +262,9 @@ def process_and_save_graphs(path_dataset, save_path, k=10):
                 plt.xlabel("X")
                 plt.ylabel("Y")
                 ax.set_zlabel("Z")
-                ax.scatter(point_cloud[::5,0], point_cloud[::5,1], point_cloud[::5,2], s=0.1)
+                ax.scatter(point_cloud[::5,0], point_cloud[::5,1], point_cloud[::5,2], s=0.1, c=z_coords[::5])
+                # Set aspect ratio to 'equal'
+                ax.set_aspect('equal')
                 # Draw the 3D bounding box
                 draw_box_3d(ax, bbox_3d)
 
@@ -247,8 +273,9 @@ def process_and_save_graphs(path_dataset, save_path, k=10):
                 plt.xlabel("X")
                 plt.ylabel("Y")
                 ax.set_zlabel("Z")
-                ax.scatter(point_cloud_in_box[:,0], point_cloud_in_box[:,1], point_cloud_in_box[:,2], s=0.5)
-
+                ax.scatter(point_cloud_in_box[:,0], point_cloud_in_box[:,1], point_cloud_in_box[:,2], s=2, c=point_cloud_in_box[:,2])
+                # Set aspect ratio to 'equal'
+                ax.set_aspect('equal')
                 plt.show()
 
             # Create the graph

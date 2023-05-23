@@ -34,53 +34,73 @@ def get_point_cloud_in_bbox3d(point_cloud, box):
     """
     Get the point cloud that is inside the bounding box
     """
-    x, y, z, h, w, l, ry = box
 
-    # Extract the coordinates from the point cloud
-    x_pc = point_cloud[:, 0]
-    y_pc = point_cloud[:, 1]
-    z_pc = point_cloud[:, 2]
+    x, y, z, w, h, l, rz = box
+    
+    # Rotate the point cloud to make it parallel to the axes
+    rotation_matrix = np.array([[np.cos(rz), -np.sin(rz), 0],
+                                [np.sin(rz), np.cos(rz), 0],
+                                [0, 0, 1]])
+
+    rotated_point_cloud = np.dot(point_cloud - np.array([x, y, z]), rotation_matrix.T)
 
     # Define the boundaries of the bounding box
-    x_min = x - l / 2
-    x_max = x + l / 2
-    y_min = y - w / 2
-    y_max = y + w / 2
-    z_min = z - h / 2
-    z_max = z + h / 2
+    x_min = -w / 2
+    x_max = w / 2
+    y_min = -l / 2
+    y_max = l / 2
+    z_min = 0
+    z_max = h
 
-    # Find the indices of the points within the bounding box
-    indices = (x_pc >= x_min) & (x_pc <= x_max) & (y_pc >= y_min) & (y_pc <= y_max) & (z_pc >= z_min) & (z_pc <= z_max)
+    # Filter the points within the bounding box
+    mask = (rotated_point_cloud[:, 0] >= x_min) & (rotated_point_cloud[:, 0] <= x_max) \
+           & (rotated_point_cloud[:, 1] >= y_min) & (rotated_point_cloud[:, 1] <= y_max) \
+           & (rotated_point_cloud[:, 2] >= z_min) & (rotated_point_cloud[:, 2] <= z_max)
 
-    # Get the point cloud inside the bounding box
-    point_cloud_in_box = point_cloud[indices]
+    filtered_point_cloud = rotated_point_cloud[mask]
 
-    return point_cloud_in_box
+    return filtered_point_cloud
 
-def get_bbox3d_corners(box3d):
+def get_bbox3d_corners(bbox):
     """
     Get the 3D bounding box corners
     """
-    x, y, z, h, w, l, ry = box3d
 
-    # Calculate half dimensions
-    l2 = l / 2
-    w2 = w / 2
-    h2 = h / 2
+    x, y, z, w, l, h, rz = bbox
+    # x: object center x
+    # y: object center y
+    # z: object bottom center z
+    # w: object width
+    # h: object height
+    # l: object length
+    # rz: object rotation around center z axis
+    
+    # Calculate the rotation matrix
+    rotation_matrix = np.array([[np.cos(rz), -np.sin(rz), 0],
+                                [np.sin(rz), np.cos(rz), 0],
+                                [0, 0, 1]])
+    
+    # Calculate the half-dimensions of the box
+    half_h = h / 2
+    half_w = w / 2
+    half_l = l / 2
+    
+    # Define the eight corners of the box
+    corners = np.array([[-half_w, -half_l, 0],
+                        [half_w, -half_l, 0],
+                        [half_w, half_l, 0],
+                        [-half_w, half_l, 0],
+                        [-half_w, -half_l, h],
+                        [half_w, -half_l, h],
+                        [half_w, half_l, h],
+                        [-half_w, half_l, h]])
+    
+    # Rotate and translate the corners
+    rotated_corners = np.dot(corners, rotation_matrix.T)
+    translated_corners = rotated_corners + np.array([x, y, z])
+    
+    return translated_corners
 
-    # Define corner coordinates
-    corners = [
-        [x + l2 * np.cos(ry) + w2 * np.sin(ry), y + h2, z - l2 * np.sin(ry) + w2 * np.cos(ry)],
-        [x + l2 * np.cos(ry) - w2 * np.sin(ry), y + h2, z - l2 * np.sin(ry) - w2 * np.cos(ry)],
-        [x - l2 * np.cos(ry) - w2 * np.sin(ry), y + h2, z + l2 * np.sin(ry) - w2 * np.cos(ry)],
-        [x - l2 * np.cos(ry) + w2 * np.sin(ry), y + h2, z + l2 * np.sin(ry) + w2 * np.cos(ry)],
-        [x + l2 * np.cos(ry) + w2 * np.sin(ry), y - h2, z - l2 * np.sin(ry) + w2 * np.cos(ry)],
-        [x + l2 * np.cos(ry) - w2 * np.sin(ry), y - h2, z - l2 * np.sin(ry) - w2 * np.cos(ry)],
-        [x - l2 * np.cos(ry) - w2 * np.sin(ry), y - h2, z + l2 * np.sin(ry) - w2 * np.cos(ry)],
-        [x - l2 * np.cos(ry) + w2 * np.sin(ry), y - h2, z + l2 * np.sin(ry) + w2 * np.cos(ry)]
-    ]
-
-    return np.array(corners)
 
 def resample_point_cloud(point_cloud, k):
     """
