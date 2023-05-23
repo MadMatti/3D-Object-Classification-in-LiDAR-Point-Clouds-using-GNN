@@ -1,6 +1,5 @@
 from typing import List, Tuple, Union
 
-from torch.utils.data import Dataset as TorchDataset
 from torch_geometric.data import Dataset as GeometricDataset, Data
 import torch
 import torch_geometric.utils as utils
@@ -11,8 +10,7 @@ import pickle
 from tqdm import tqdm
 import multiprocessing
 import os
-
-from preprocess import kitti as kitti_preprocess
+import networkx as nx
 
 class Dataset(GeometricDataset):
     def __init__(self, path=None):
@@ -60,15 +58,23 @@ class Dataset(GeometricDataset):
         with open(graph_file, "rb") as f:
             G = pickle.load(f)
 
+        # Convert to numpy
+        adjacency_matrix = nx.to_numpy_array(G)  # Convert graph to adjacency matrix
+        edge_index = np.array(G.edges())  # Extract edge indices as a NumPy array
+        node_labels = np.array(list(G.nodes()))  # Extract node labels as a NumPy array
+
+        adjacency_matrix = torch.from_numpy(adjacency_matrix)
+        edge_index = torch.from_numpy(edge_index).t().contiguous()  # Transpose edge index and ensure it's contiguous
+        node_labels = torch.from_numpy(node_labels)
+
+        A = Data(x=node_labels, edge_index=edge_index, edge_attr=None, y=None, adj=adjacency_matrix)
+
         # Load the label
         with open(label_file, 'r') as f:
             label = f.read()
             label = label.strip()
 
         label_id = self.classes.add(label)
-
-        # Convert the graph to pytorch geometric data
-        A = utils.from_networkx(G)
 
         # Add label
         A.y = torch.tensor(label_id, dtype=torch.long)
@@ -102,7 +108,7 @@ class Dataset(GeometricDataset):
             label_files.sort()
 
             # Parallelize the loop using multiprocessing
-            pool = multiprocessing.Pool(processes=30)
+            pool = multiprocessing.Pool()
             results = []
             for graph_file, label_file in zip(graph_files, label_files):
                 results.append(pool.apply_async(self.process_sample, (graph_file, label_file)))

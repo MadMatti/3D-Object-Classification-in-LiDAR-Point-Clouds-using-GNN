@@ -178,6 +178,11 @@ def preprocess_sample(point_cloud_file, label_file, calib_file, save_path, sampl
     object_classes = objects["classes"]
     object_boxes = objects["box_3d"]
 
+    stats = {
+        "num_points": [],
+        "classes": []
+    }
+
     # For each object in the point cloud
     for j in range(len(object_classes)):
         # Get the class id and name
@@ -209,6 +214,9 @@ def preprocess_sample(point_cloud_file, label_file, calib_file, save_path, sampl
         with open(os.path.join(save_path, "y", f"label_{sample_idx}_{j}.txt"), "w") as f:
             f.write(class_name)
 
+        stats["num_points"].append(num_points)
+        stats["classes"].append(class_name)
+
         # Plot the point cloud in 3D
         if DEBUG:          
             print("Class: {}, Number of points: {}".format(class_name, num_points))
@@ -236,6 +244,8 @@ def preprocess_sample(point_cloud_file, label_file, calib_file, save_path, sampl
             # Set aspect ratio to 'equal'
             ax.set_aspect('equal')
             plt.show()
+    
+    return stats
 
 def preprocess(path_dataset, save_path, k=10):
     print("Preprocessing KITTI dataset")
@@ -270,5 +280,15 @@ def preprocess(path_dataset, save_path, k=10):
     for i, (graph_file, label_file, calib_file) in enumerate(zip(point_cloud_files, label_files, calib_files)):
         results.append(pool.apply_async(preprocess_sample, (graph_file, label_file, calib_file, save_path, i)))
 
+    stats_total = {}
+
     for result in tqdm(results, desc="Progress", total=len(results)):
-        result.get()
+        stats = result.get()
+
+        for stat_name, value in stats.items():
+            if stat_name not in stats_total:
+                stats_total[stat_name] = []
+            stats_total[stat_name].extend(value)
+
+    # Plot stats
+    # TODO
