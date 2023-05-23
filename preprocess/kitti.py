@@ -1,27 +1,16 @@
 import os
 import numpy as np
-import torch
 import utils
-from torch_geometric.data import Data
-from torch_geometric.nn import knn_graph
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import pickle
 
 DEBUG = False
-
-DATASET_PATH = "/tmp_workspace/KITTI/"
-DATASET_TRAIN_PATH = os.path.join(DATASET_PATH, "training")
-DATASET_TEST_PATH = os.path.join(DATASET_PATH, "testing")
-SAVE_PATH = os.path.join(DATASET_PATH, "processed")
 
 CLASS_NAMES_TO_IDS = {"Car": 1, "Pedestrian": 2, "Cyclist": 4}
 CLASS_IDS_TO_NAMES = {1: "Car", 2: "Pedestrian", 4: "Cyclist"}
 
 NUM_VERTEXES_PER_SAMPLE = 100
 NUM_EDGES_PER_VERTEX = 5
-
-os.makedirs(SAVE_PATH, exist_ok=True)
 
 def load_velodyne(bin_path):
     obj = np.fromfile(bin_path, dtype=np.float32).reshape(-1, 4)
@@ -213,13 +202,13 @@ def process_and_save_graphs(path_dataset, save_path, k=10):
 
 
         # For each object in the point cloud
-        for i in range(len(object_classes)):
+        for j in range(len(object_classes)):
             # Get the class id and name
-            class_id = object_classes[i]
+            class_id = object_classes[j]
             class_name = CLASS_IDS_TO_NAMES[class_id]
 
             # Get the 3D bounding box
-            bbox_3d = object_boxes[i]
+            bbox_3d = object_boxes[j]
 
             # Get the 3D bounding box corners
             corners = utils.get_bbox3d_corners(bbox_3d)
@@ -266,20 +255,11 @@ def process_and_save_graphs(path_dataset, save_path, k=10):
             graph = utils.knn_graph(point_cloud_in_box, k=NUM_EDGES_PER_VERTEX)
 
             # Save the graph
-            with open(os.path.join(SAVE_PATH, "X", "graph_{}.pkl".format(i)), "wb") as f:
+            with open(os.path.join(save_path, "X", f"graph_{i}_{j}.pkl"), "wb") as f:
                 pickle.dump(graph, f)
 
             # Save the label
-            with open(os.path.join(SAVE_PATH, "y", "label_{}.txt".format(i)), "w") as f:
+            with open(os.path.join(save_path, "y", f"label_{i}_{j}.txt"), "w") as f:
                 f.write(class_name)
-
-def main():
-    # Process the training dataset
-    process_and_save_graphs(DATASET_TRAIN_PATH, SAVE_PATH)
-
-
-if __name__ == '__main__':
-    main()
-    
 
     
