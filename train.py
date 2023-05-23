@@ -10,8 +10,10 @@ from torch_geometric.loader import DataLoader
 from sklearn import metrics as sk_metrics
 from model import *
 from dataset import Dataset
+from datasets.kitti import Dataset as KittiDataset
 
-CLASSES = ["bathtub", "bed", "chair", "desk", "dresser", "monitor", "night_stand", "sofa", "table", "toilet"]
+# CLASSES = ["bathtub", "bed", "chair", "desk", "dresser", "monitor", "night_stand", "sofa", "table", "toilet"]
+CLASSES = ["Car", "Pedestrian", "Cyclist"]
 
 import torch_geometric
 print(torch_geometric.__version__)
@@ -70,6 +72,7 @@ def train(model, num_epochs, dataset, device):
         running_train_loss = 0.0
         running_vall_loss = 0.0
 
+        model.double()
         # Training Loop
         model.train()
 
@@ -83,7 +86,7 @@ def train(model, num_epochs, dataset, device):
             y_pred = model(x.to(device))
 
             # calculate loss for the predicted output
-            train_loss = loss_fn(y_pred, y_true.to(device))
+            train_loss = loss_fn(y_pred.float(), y_true.to(device))
 
             train_loss.backward()  # backpropagate the loss
             optimizer.step()  # adjust parameters based on the calculated gradients
@@ -99,7 +102,7 @@ def train(model, num_epochs, dataset, device):
                 x = data_batch
                 y_true = data_batch.y
                 y_pred = model(x.to(device))
-                val_loss = loss_fn(y_pred, y_true.to(device))
+                val_loss = loss_fn(y_pred.float(), y_true.to(device))
                 running_vall_loss += val_loss.item()
                 x_all.extend(x.x.cpu().numpy())
                 #print(y_true)
@@ -164,13 +167,13 @@ if __name__ == "__main__":
 
     device = torch.device('cpu')
 
-    DATASET_PATH = '/Users/hamzaali/Workspace/3D-Object-Detection/3D-Object-Detection-in-LiDAR-Point-Clouds-using-GNN'
-    dataset = Dataset(DATASET_PATH)
+    DATASET_PATH = '/Users/mattiaevangelisti/Documents/KITTI/processed'
+    dataset = KittiDataset(DATASET_PATH)
 
-    model = GraphClassifier(hidden_dim=64, output_dim=len(CLASSES))
-    model2 = GraphSage(hidden_dim=64, output_dim=len(CLASSES))
+    GNN = GraphClassifier(hidden_dim=64, output_dim=len(CLASSES))
+    graphSage = GraphSage(hidden_dim=64, output_dim=len(CLASSES))
 
     print("The model will be running on", device, "device\n")
     #summary(model, (input_dim,))
 
-    train(model2, 1000, dataset, device)
+    train(GNN, 50, dataset, device)

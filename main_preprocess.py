@@ -1,7 +1,7 @@
 from preprocess import kitti as preprocess_kitti
 import os 
 
-DATASET_PATH = "/tmp_workspace/KITTI/"
+DATASET_PATH = "/Users/mattiaevangelisti/Documents/KITTI/"
 DATASET_TRAIN_PATH = os.path.join(DATASET_PATH, "training")
 DATASET_TEST_PATH = os.path.join(DATASET_PATH, "testing")
 SAVE_PATH = os.path.join(DATASET_PATH, "processed")

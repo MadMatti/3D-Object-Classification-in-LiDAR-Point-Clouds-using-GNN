@@ -64,6 +64,7 @@ def train(model, num_epochs, dataset, device, classes):
         running_train_loss = 0.0
         running_vall_loss = 0.0
 
+        model.double()
         # Training Loop
         model.train()
 
@@ -77,7 +78,7 @@ def train(model, num_epochs, dataset, device, classes):
             y_pred = model(x.to(device))
 
             # calculate loss for the predicted output
-            train_loss = loss_fn(y_pred, y_true.to(device))
+            train_loss = loss_fn(y_pred.float(), y_true.to(device))
 
             train_loss.backward()  # backpropagate the loss
             optimizer.step()  # adjust parameters based on the calculated gradients
@@ -93,7 +94,7 @@ def train(model, num_epochs, dataset, device, classes):
                 x = data_batch
                 y_true = data_batch.y
                 y_pred = model(x.to(device))
-                val_loss = loss_fn(y_pred, y_true.to(device))
+                val_loss = loss_fn(y_pred.float(), y_true.to(device))
                 running_vall_loss += val_loss.item()
                 x_all.extend(x.x.cpu().numpy())
                 #print(y_true)
@@ -108,7 +109,6 @@ def train(model, num_epochs, dataset, device, classes):
                     y_true.to(device).flatten().cpu().numpy())
 
         val_loss_value = running_vall_loss / len(valid_loader)
-        print(len(y_true_all), len(y_pred_all))
         acc_value = sk_metrics.accuracy_score(y_true_all, y_pred_all)
 
         cf_matrix = sk_metrics.confusion_matrix(y_true_all, y_pred_all, normalize="true")
@@ -158,7 +158,7 @@ if __name__ == "__main__":
 
     device = torch.device('cpu')
 
-    DATASET_PATH = '/tmp_workspace/KITTI/processed'
+    DATASET_PATH = '/Users/mattiaevangelisti/Documents/KITTI/processed'
     dataset = KittiDataset(DATASET_PATH)
     classes = dataset.classes
     print(classes)
