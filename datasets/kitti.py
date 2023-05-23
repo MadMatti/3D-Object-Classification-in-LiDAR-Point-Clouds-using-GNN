@@ -69,8 +69,6 @@ class Dataset(GeometricDataset):
         edge_index = torch.from_numpy(edge_index).t().contiguous()  # Transpose edge index and ensure it's contiguous
         node_labels = torch.from_numpy(node_labels)
 
-        A = Data(x=node_labels, edge_index=edge_index, edge_attr=None, y=None, adj=adjacency_matrix)
-
         # Load the label
         with open(label_file, 'r') as f:
             label = f.read()
@@ -78,9 +76,8 @@ class Dataset(GeometricDataset):
 
         label_id = self.classes.add(label)
 
-        # Add label
-        A.y = torch.tensor(label_id, dtype=torch.long)
-
+        A = Data(x=node_labels, edge_index=edge_index, edge_attr=None, y=label_id, adj=adjacency_matrix)
+        
         # Convert the label to a one-hot vector
         #label = np.zeros(len(class_names_to_id.items()))
         #label[label_id] = 1
@@ -123,17 +120,29 @@ class Dataset(GeometricDataset):
                     A, label = future.result()
                     self.data.append(A)
                     self.label.append(label)
-                    self.classes.add(label)
 
             # Save to cache
             with open(self.path + '.cache', 'wb') as f:
                 pickle.dump((self.data, self.label), f)
 
+        # Create classes set
+        for l in self.label:
+            self.classes.add(l)
+
+        # Convert labels to one-hot
+        new_labels = []
+        for l in self.label:
+            new_label = np.zeros(len(self.classes))
+            new_label[self.classes.get_loc(l)] = 1
+
+            new_labels.append(new_label)
+        self.label = new_labels
+
         # Print the number of items
         print('Number of items:', len(self.data))
 
         # Print the class distribution
-        #print('Class distribution:', np.sum(self.label, axis=0))
+        print('Class distribution:', np.sum(self.label, axis=0))
 
     
     def len(self):
