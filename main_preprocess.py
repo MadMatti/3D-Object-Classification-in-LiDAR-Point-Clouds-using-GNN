@@ -12,7 +12,7 @@ def main():
     os.makedirs(SAVE_PATH, exist_ok=True)
 
     # Process the training dataset
-    preprocess_kitti.process_and_save_graphs(DATASET_TRAIN_PATH, SAVE_PATH)
+    preprocess_kitti.preprocess(DATASET_TRAIN_PATH, SAVE_PATH)
 
 
 if __name__ == '__main__':
