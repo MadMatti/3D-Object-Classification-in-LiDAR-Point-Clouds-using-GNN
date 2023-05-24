@@ -39,8 +39,8 @@ def predict(model, x):
 
 # Training Function
 def train(model, num_epochs, dataset, device, classes, lr=0.001, scheduler=None, batch_size=64, weight_decay=0.0001):
-    plt.show(block=False)
-    fig = plt.figure(figsize=(10, 10))
+    # plt.show(block=False)
+    # fig = plt.figure(figsize=(10, 10))
 
     class_weights = dataset.get_class_weights()
 
@@ -76,6 +76,9 @@ def train(model, num_epochs, dataset, device, classes, lr=0.001, scheduler=None,
     test_loader = DataLoader(dataset=dataset_test, batch_size=batch_size, shuffle=True)
 
     very_start_time = time.time()
+    train_loss_list = []
+    valid_loss_list = []
+
     print("Begin training...")
     for epoch in tqdm(range(1, num_epochs + 1)):
         start_time = time.time()
@@ -117,6 +120,7 @@ def train(model, num_epochs, dataset, device, classes, lr=0.001, scheduler=None,
 
         # Calculate training loss value
         train_loss_value = running_train_loss / len(train_loader)
+        train_loss_list.append(train_loss_value)
 
         # Validation Loop
         with torch.no_grad():
@@ -140,27 +144,28 @@ def train(model, num_epochs, dataset, device, classes, lr=0.001, scheduler=None,
                     y_true.to(device).flatten().cpu().numpy())
 
         val_loss_value = running_vall_loss / len(valid_loader)
+        valid_loss_list.append(val_loss_value)
         acc_value = sk_metrics.accuracy_score(y_true_all, y_pred_all)
 
-        cf_matrix = sk_metrics.confusion_matrix(y_true_all, y_pred_all, normalize="true")
-        df_cm = pd.DataFrame(cf_matrix, index=classes, columns=classes)
+        # cf_matrix = sk_metrics.confusion_matrix(y_true_all, y_pred_all, normalize="true")
+        # df_cm = pd.DataFrame(cf_matrix, index=classes, columns=classes)
 
-        plt.subplot(2, 1, 1)
+        # plt.subplot(2, 1, 1)
 
-        sn.heatmap(df_cm, annot=True)
+        # sn.heatmap(df_cm, annot=True)
 
-        wrong = []
-        correct = []
-        #print(len(x_all), len(y_pred_all), len(y_true_all), len(y_conf_all))
-        for i in range(0, len(y_pred_all)):
-            if y_pred_all[i] != y_true_all[i]:
-                wrong.append(i)
-            else:
-                correct.append(i)
+        # wrong = []
+        # correct = []
+        # #print(len(x_all), len(y_pred_all), len(y_true_all), len(y_conf_all))
+        # for i in range(0, len(y_pred_all)):
+        #     if y_pred_all[i] != y_true_all[i]:
+        #         wrong.append(i)
+        #     else:
+        #         correct.append(i)
 
-        mean_conf_f = np.mean(np.array(y_conf_all)[wrong])
-        mean_conf_t = np.mean(np.array(y_conf_all)[correct])
-        plt.title(f"Confusion Matrix {mean_conf_f:.2f} {mean_conf_t:.2f}")
+        # mean_conf_f = np.mean(np.array(y_conf_all)[wrong])
+        # mean_conf_t = np.mean(np.array(y_conf_all)[correct])
+        # plt.title(f"Confusion Matrix {mean_conf_f:.2f} {mean_conf_t:.2f}")
 
         # for i in wrong[:7]:
         #     plt.subplot(2, 2, 3)
@@ -219,7 +224,17 @@ def train(model, num_epochs, dataset, device, classes, lr=0.001, scheduler=None,
         print('Test Precision is: %.4f' % precision_value_test)
         print('Test F1 Score is: %.4f' % f1_value_test)
 
-    plt.close()
+    # plt.close()
+
+    # plot the training and validation loss
+    plt.plot(train_loss_list, label='Training Loss', color='seagreen')
+    plt.plot(valid_loss_list, label='Validation Loss', color='indianred')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.grid()
+    plt.show()
+
 
     return best_acc_value
 
