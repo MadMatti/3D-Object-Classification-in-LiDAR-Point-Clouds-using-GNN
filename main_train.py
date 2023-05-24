@@ -1,3 +1,4 @@
+import random
 import time
 import torch
 import matplotlib
@@ -18,6 +19,8 @@ from sklearn.model_selection import GridSearchCV
 
 import warnings
 warnings.filterwarnings("ignore")
+
+SEED = 42
 
 def save_model():
     path = "./last.pt"
@@ -103,12 +106,14 @@ def train(model, num_epochs, dataset, device, classes, lr=0.001, scheduler=None,
 
             train_loss.backward()  # backpropagate the loss
             optimizer.step()  # adjust parameters based on the calculated gradients
-            if lr_scheduler is not None:
-                if scheduler == 'ReduceLROnPlateau':
-                    lr_scheduler.step(train_loss)
-                else:
-                    lr_scheduler.step()
+        
             running_train_loss += train_loss.item()  # track the loss value
+
+        if lr_scheduler is not None:
+            if scheduler == 'ReduceLROnPlateau':
+                lr_scheduler.step(train_loss)
+            else:
+                lr_scheduler.step()
 
         # Calculate training loss value
         train_loss_value = running_train_loss / len(train_loader)
@@ -188,8 +193,8 @@ def train(model, num_epochs, dataset, device, classes, lr=0.001, scheduler=None,
 def grid_search(num_epochs, dataset, device, classes):
     # define hyperparameters to search
     param_grid = {
-        'scheduler': [None, 'StepLR', 'ReduceLROnPlateau', 'CosineAnnealingLR'],
-        'batch_size': [32, 64, 128],
+        'scheduler': ['StepLR', 'ReduceLROnPlateau', 'CosineAnnealingLR'],
+        'batch_size': [16, 32, 64, 128],
         'hidden_nodes': [32, 64, 128],
     }
 
@@ -198,17 +203,25 @@ def grid_search(num_epochs, dataset, device, classes):
     for scheduler in param_grid['scheduler']:
         for batch_size in param_grid['batch_size']:
             for hidden_nodes in param_grid['hidden_nodes']:
+                random.seed(SEED)
+                np.random.seed(SEED)
+                torch.manual_seed(SEED)
                 print(f"Testing {scheduler} {batch_size} {hidden_nodes}")
                 model = GraphSage(hidden_dim=hidden_nodes, output_dim=len(classes))
                 accuracy = train(model, num_epochs, dataset, device, classes, scheduler=scheduler, batch_size=batch_size)
-                pd.concat([results, pd.DataFrame([[scheduler, batch_size, hidden_nodes, accuracy]], columns=['scheduler', 'batch_size', 'hidden_nodes', 'accuracy'])])
-                results.to_csv('GraphSage_results.csv')
+                results = pd.concat([results, pd.DataFrame([[scheduler, batch_size, hidden_nodes, accuracy]], columns=['scheduler', 'batch_size', 'hidden_nodes', 'accuracy'])], ignore_index=True)
+                # substiture nan values with 'None'
+                results = results.fillna('None')
+                results.to_csv('GraphSage_results2.csv', index=False)
 
     
         
 
 
 if __name__ == "__main__":
+    random.seed(SEED)
+    np.random.seed(SEED)
+    torch.manual_seed(SEED)
     matplotlib.use('TkAgg')
     # open log.txt in append mode
 
@@ -226,4 +239,8 @@ if __name__ == "__main__":
     #summary(model, (input_dim,))
 
     # train(graphSage, 10, dataset, device, classes)
-    grid_search(10, dataset, device, classes)
+    # grid_search(10, dataset, device, classes)
+
+    best_params = {'scheduler': 'ReduceLROnPlateau', 'batch_size': 32, 'hidden_nodes': 32}
+    model = GraphSage(hidden_dim=best_params['hidden_nodes'], output_dim=len(classes))
+    train(model, 20, dataset, device, classes, scheduler=best_params['scheduler'], batch_size=best_params['batch_size'])
