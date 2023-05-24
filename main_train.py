@@ -186,6 +186,39 @@ def train(model, num_epochs, dataset, device, classes, lr=0.001, scheduler=None,
     # Print total training time
     print('Training complete in %.2f sec' % (time.time() - very_start_time))
 
+    # Test the model
+    with torch.no_grad():
+        model.eval()
+        x_all = []
+        y_true_all = []
+        y_pred_all = []
+        y_conf_all = []
+        for data_batch in test_loader:
+            x = data_batch
+            y_true = data_batch.y
+            y_pred = model(x.to(device))
+            x_all.extend(x.x.cpu().numpy())
+            y_pred_all.extend(
+                y_pred.argmax(dim=1, keepdim=True)
+                    .flatten().cpu().numpy())
+            y_conf_all.extend(
+                y_pred.cpu().numpy().max(axis=1))
+
+            y_true_all.extend(
+                y_true.to(device).flatten().cpu().numpy())
+
+        # calculate test accuracy, recall, precision and f1 score
+        acc_value_test = sk_metrics.accuracy_score(y_true_all, y_pred_all)
+        recall_value_test = sk_metrics.recall_score(y_true_all, y_pred_all, average='weighted')
+        precision_value_test = sk_metrics.precision_score(y_true_all, y_pred_all, average='weighted')
+        f1_value_test = sk_metrics.f1_score(y_true_all, y_pred_all, average='weighted')
+
+        # print the test statistics
+        print('Test Accuracy is: %.4f' % acc_value_test)
+        print('Test Recall is: %.4f' % recall_value_test)
+        print('Test Precision is: %.4f' % precision_value_test)
+        print('Test F1 Score is: %.4f' % f1_value_test)
+
     plt.close()
 
     return best_acc_value
@@ -243,4 +276,4 @@ if __name__ == "__main__":
 
     best_params = {'scheduler': 'ReduceLROnPlateau', 'batch_size': 32, 'hidden_nodes': 32}
     model = GraphSage(hidden_dim=best_params['hidden_nodes'], output_dim=len(classes))
-    train(model, 20, dataset, device, classes, scheduler=best_params['scheduler'], batch_size=best_params['batch_size'])
+    train(model, 10, dataset, device, classes, scheduler=best_params['scheduler'], batch_size=best_params['batch_size'])
