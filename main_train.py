@@ -188,28 +188,23 @@ def train(model, num_epochs, dataset, device, classes, lr=0.001, scheduler=None,
 def grid_search(num_epochs, dataset, device, classes):
     # define hyperparameters to search
     param_grid = {
-        'lr': [0.001, 0.01, 0.1],
         'scheduler': [None, 'StepLR', 'ReduceLROnPlateau', 'CosineAnnealingLR'],
         'batch_size': [32, 64, 128],
         'hidden_nodes': [32, 64, 128],
-        'dropout': [0.0, 0.1, 0.2],
-        'weight_decay': [0.1, 0.01, 0.001],
     }
 
-    results = pd.DataFrame(columns=['lr', 'scheduler', 'batch_size', 'hidden_nodes', 'dropout', 'weight_decay', 'accuracy'])
+    results = pd.DataFrame(columns=['scheduler', 'batch_size', 'hidden_nodes', 'accuracy'])
 
-    # define search
-    for lr in param_grid['lr']:
-        for scheduler in param_grid['scheduler']:
-            for batch_size in param_grid['batch_size']:
-                for hidden_nodes in param_grid['hidden_nodes']:
-                    for dropout in param_grid['dropout']:
-                        for weight_decay in param_grid['weight_decay']:
-                            print(f"lr: {lr}, scheduler: {scheduler}, batch_size: {batch_size}, hidden_nodes: {hidden_nodes}, dropout: {dropout}, weight_decay: {weight_decay}")
-                            model = GraphSage(hidden_dim=hidden_nodes, output_dim=len(classes), dropout=dropout)
-                            accuracy = train(model, num_epochs, dataset, device, classes, lr, scheduler, batch_size, weight_decay)
-                            results = pd.concat([results, pd.DataFrame([[lr, scheduler, batch_size, hidden_nodes, dropout, weight_decay, accuracy]], columns=['lr', 'scheduler', 'batch_size', 'hidden_nodes', 'dropout', 'weight_decay', 'accuracy'])], ignore_index=True)
-                            results.to_csv('results.csv', index=False)
+    for scheduler in param_grid['scheduler']:
+        for batch_size in param_grid['batch_size']:
+            for hidden_nodes in param_grid['hidden_nodes']:
+                print(f"Testing {scheduler} {batch_size} {hidden_nodes}")
+                model = GraphSage(hidden_dim=hidden_nodes, output_dim=len(classes))
+                accuracy = train(model, num_epochs, dataset, device, classes, scheduler=scheduler, batch_size=batch_size)
+                pd.concat([results, pd.DataFrame([[scheduler, batch_size, hidden_nodes, accuracy]], columns=['scheduler', 'batch_size', 'hidden_nodes', 'accuracy'])])
+                results.to_csv('GraphSage_results.csv')
+
+    
         
 
 

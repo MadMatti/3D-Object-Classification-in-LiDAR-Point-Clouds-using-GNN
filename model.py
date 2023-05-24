@@ -165,14 +165,12 @@ class GraphClassifier(nn.Module):
 
 class GraphSage(nn.Module):
     '''GraphSAGE'''
-    def __init__(self, hidden_dim, output_dim, dropout):
+    def __init__(self, hidden_dim, output_dim):
         super(GraphSage, self).__init__()
 
         self.conv1 = gnn.SAGEConv(-1, hidden_dim)
         self.conv2 = gnn.SAGEConv(hidden_dim, hidden_dim)
         self.conv3 = gnn.SAGEConv(hidden_dim, output_dim)
-        self.dropout = nn.Dropout(dropout)  # Add dropout layer
-
 
     def forward(self, x):
         x, edge_index, batch = x.x, x.edge_index, x.batch
@@ -182,7 +180,6 @@ class GraphSage(nn.Module):
         x = F.relu(x)
         x = self.conv2(x, edge_index)
         x = F.relu(x)
-        x = self.dropout(x)
         x = self.conv3(x, edge_index)
         x = gnn_global_mean_pool(x, batch)
         x = F.softmax(x, dim=1)
