@@ -1,3 +1,4 @@
+import time
 import torch
 import matplotlib
 import numpy as np
@@ -12,6 +13,8 @@ from sklearn.model_selection import train_test_split
 from model import *
 from dataset import Dataset
 from datasets.kitti import Dataset as KittiDataset
+from skorch import NeuralNetClassifier
+from sklearn.model_selection import GridSearchCV
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -32,7 +35,7 @@ def predict(model, x):
 
 
 # Training Function
-def train(model, num_epochs, dataset, device, classes):
+def train(model, num_epochs, dataset, device, classes, lr=0.001, scheduler=None, batch_size=64, weight_decay=0.0001):
     plt.show(block=False)
     fig = plt.figure(figsize=(10, 10))
 
@@ -40,27 +43,39 @@ def train(model, num_epochs, dataset, device, classes):
 
     # Define the loss function with Classification Cross-Entropy loss and an optimizer with Adam optimizer
     loss_fn = torch.nn.CrossEntropyLoss(weight=class_weights.to(device))
-    optimizer = optim.AdamW(model.parameters(), lr=0.001, weight_decay=0.0001)
+    optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+
+    # Define the scheduler
+    if scheduler == "ReduceLROnPlateau":
+        lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=2, verbose=True)
+    elif scheduler == "StepLR":
+        lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
+    elif scheduler == "CosineAnnealingLR":
+        lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
+    else:
+        lr_scheduler = None
 
     best_acc_value = 0.0
 
-    # dataset_train, dataset_valid = dataset, dataset
-    dataset_train, dataset_valid = train_test_split(dataset, test_size=0.2)
+    # Split the dataset into training, validation and test sets
+    dataset_train, dataset_test = train_test_split(dataset, test_size=0.15, random_state=42)
+    dataset_train, dataset_valid = train_test_split(dataset_train, test_size=0.15, random_state=42)
+
 
     print("Training set size:", len(dataset_train))
     print("Validation set size:", len(dataset_valid))
+    print("Test set size:", len(dataset_test))
     # print a sample of the dataset
     print(dataset_train[0])
 
+    train_loader = DataLoader(dataset=dataset_train, batch_size=batch_size, shuffle=True)
+    valid_loader = DataLoader(dataset=dataset_valid, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(dataset=dataset_test, batch_size=batch_size, shuffle=True)
 
-    print("Training set size:", len(dataset_train))
-    print("Validation set size:", len(dataset_valid))
-
-    train_loader = DataLoader(dataset=dataset_train, batch_size=64, shuffle=True)
-    valid_loader = DataLoader(dataset=dataset_valid, batch_size=64, shuffle=True)
-
+    very_start_time = time.time()
     print("Begin training...")
     for epoch in tqdm(range(1, num_epochs + 1)):
+        start_time = time.time()
         x_all = []
         y_true_all = []
         y_pred_all = []
@@ -88,6 +103,11 @@ def train(model, num_epochs, dataset, device, classes):
 
             train_loss.backward()  # backpropagate the loss
             optimizer.step()  # adjust parameters based on the calculated gradients
+            if lr_scheduler is not None:
+                if scheduler == 'ReduceLROnPlateau':
+                    lr_scheduler.step(train_loss)
+                else:
+                    lr_scheduler.step()
             running_train_loss += train_loss.item()  # track the loss value
 
         # Calculate training loss value
@@ -148,14 +168,49 @@ def train(model, num_epochs, dataset, device, classes):
 
         # Save the model if the accuracy is the best
         if best_acc_value < acc_value:
-#            save_model()
+            # save_model()
             best_acc_value = acc_value
 
             # Print the statistics of the epoch
         print('Completed training epoch', epoch, 'Training Loss is: %.4f' % train_loss_value,
             'Validation Loss is: %.4f' % val_loss_value, 'Accuracy is: %.4f' % acc_value)
 
+        # Print the time required for the epoch
+        print('Time taken for epoch %d is %.2f sec\n' % (epoch, time.time() - start_time))
+    
+    # Print total training time
+    print('Training complete in %.2f sec' % (time.time() - very_start_time))
+
     plt.close()
+
+    return best_acc_value
+
+def grid_search(num_epochs, dataset, device, classes):
+    # define hyperparameters to search
+    param_grid = {
+        'lr': [0.001, 0.01, 0.1],
+        'scheduler': [None, 'StepLR', 'ReduceLROnPlateau', 'CosineAnnealingLR'],
+        'batch_size': [32, 64, 128],
+        'hidden_nodes': [32, 64, 128],
+        'dropout': [0.0, 0.1, 0.2],
+        'weight_decay': [0.1, 0.01, 0.001],
+    }
+
+    results = pd.DataFrame(columns=['lr', 'scheduler', 'batch_size', 'hidden_nodes', 'dropout', 'weight_decay', 'accuracy'])
+
+    # define search
+    for lr in param_grid['lr']:
+        for scheduler in param_grid['scheduler']:
+            for batch_size in param_grid['batch_size']:
+                for hidden_nodes in param_grid['hidden_nodes']:
+                    for dropout in param_grid['dropout']:
+                        for weight_decay in param_grid['weight_decay']:
+                            print(f"lr: {lr}, scheduler: {scheduler}, batch_size: {batch_size}, hidden_nodes: {hidden_nodes}, dropout: {dropout}, weight_decay: {weight_decay}")
+                            model = GraphSage(hidden_dim=hidden_nodes, output_dim=len(classes), dropout=dropout)
+                            accuracy = train(model, num_epochs, dataset, device, classes, lr, scheduler, batch_size, weight_decay)
+                            results = pd.concat([results, pd.DataFrame([[lr, scheduler, batch_size, hidden_nodes, dropout, weight_decay, accuracy]], columns=['lr', 'scheduler', 'batch_size', 'hidden_nodes', 'dropout', 'weight_decay', 'accuracy'])], ignore_index=True)
+                            results.to_csv('results.csv', index=False)
+        
 
 
 if __name__ == "__main__":
@@ -169,10 +224,11 @@ if __name__ == "__main__":
     classes = dataset.classes
     print(classes)
 
-    GNN = GraphClassifier(hidden_dim=64, output_dim=len(classes))
-    graphSage = GraphSage(hidden_dim=64, output_dim=len(classes))
+    # GNN = GraphClassifier(hidden_dim=64, output_dim=len(classes))
+    # graphSage = GraphSage(hidden_dim=64, output_dim=len(classes))
 
     print("The model will be running on", device, "device\n")
     #summary(model, (input_dim,))
 
-    train(GNN, 50, dataset, device, classes)
+    # train(graphSage, 10, dataset, device, classes)
+    grid_search(10, dataset, device, classes)
