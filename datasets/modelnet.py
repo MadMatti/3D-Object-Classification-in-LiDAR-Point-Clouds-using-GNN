@@ -10,7 +10,9 @@ from ordered_set import OrderedSet
 import networkx as nx
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
-from utils import knn_graph
+from utils import knn_graph, resample_point_cloud
+
+from tqdm import tqdm
 
 CLASS_NAME_TO_ID = {
     'bathtub': 0,
@@ -80,6 +82,7 @@ class Dataset(GeometricDataset):
         return weights
     
     def process(self):
+        print("Processing dataset")
         if self.path is None:
             return
         
@@ -88,36 +91,32 @@ class Dataset(GeometricDataset):
         import os
         if os.path.exists(path + '.cache'):
             # Load from cache
-            print('Loading from cache...')
+            print("Cache found!, loading from cache")
             import pickle
             with open(path + '.cache', 'rb') as f:
                 self.data, self.label = pickle.load(f)
         
         else:
+            print("Cache not found")
+
             # Load from file
             f = h5py.File(path, 'r')
 
             # convert to adjacency matrix
-            for i in range(len(f['data'])):
+            for i in tqdm(range(len(f['data'])), desc='Progress'):
                 item = f['data'][i]
 
-                # Downsample the point cloud
-                item = item[::4, :]
+                # Resample the point cloud to 500 points
+                item = resample_point_cloud(item, 500)
 
                 # Convert the point cloud to a graph where each node represents a point and each edge represents the distance between two points
-                G = knn_graph(item, 1)
-
-                # Convert the graph to an adjacency matrix
-                #A = nx.adjacency_matrix(G).todense().astype(np.float32)
-
-                # Add 1 dimension for the channel
-                #A = np.expand_dims(A, axis=0)
+                G = knn_graph(item, 5)
 
                 # Convert to torch geometric data
                 A = utils.from_networkx(G)
 
                 # Add label
-                A.y = torch.tensor(f['label'][i], dtype=torch.long)
+                A.y = torch.tensor(f['label'][i][0], dtype=torch.long)
 
                 ## Convert the label to a one-hot vector
                 #label = np.zeros(10)
@@ -141,7 +140,7 @@ class Dataset(GeometricDataset):
 
         # Create classes set
         for l in self.label:
-            self.classes.add(ID_TO_CLASS_NAME[l])
+            self.classes.add(l)
 
         # Convert labels to one-hot
         new_labels = []
