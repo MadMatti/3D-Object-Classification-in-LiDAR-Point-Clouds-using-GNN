@@ -80,7 +80,7 @@ class Dataset(GeometricDataset):
         weights = torch.Tensor(weights)
 
         return weights
-    
+
     def process(self):
         print("Processing dataset")
         if self.path is None:
@@ -105,9 +105,13 @@ class Dataset(GeometricDataset):
             # convert to adjacency matrix
             for i in tqdm(range(len(f['data'])), desc='Progress'):
                 item = f['data'][i]
+                label = f['label'][i][0]
 
                 # Resample the point cloud to 500 points
                 item = resample_point_cloud(item, 500)
+
+                # Cast to float64
+                item = item.astype(np.float64)
 
                 # Convert the point cloud to a graph where each node represents a point and each edge represents the distance between two points
                 G = knn_graph(item, 5)
@@ -116,18 +120,12 @@ class Dataset(GeometricDataset):
                 A = utils.from_networkx(G)
 
                 # Add label
-                A.y = torch.tensor(f['label'][i][0], dtype=torch.long)
+                A.y = torch.tensor(label, dtype=torch.long)
 
                 ## Convert the label to a one-hot vector
                 #label = np.zeros(10)
                 #label[f['label'][i]] = 1
-                self.label.append(f['label'][i][0])
-
-                # Plot the adjacency matrix
-                #import matplotlib.pyplot as plt
-                #plt.imshow(A)
-                #plt.title(f['label'][i])
-                #plt.show()
+                self.label.append(ID_TO_CLASS_NAME[label])
 
                 self.data.append(A)
 
