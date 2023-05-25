@@ -92,10 +92,11 @@ def train(model, num_epochs, dataset, device, classes, lr=0.001, scheduler=None,
         running_train_loss = 0.0
         running_vall_loss = 0.0
 
-        model.double()
-        # Training Loop
-        model.train()
+        # Set the model to train mode
+        model.to(device)
 
+        # Training phase
+        model.train()
         for data_batch in train_loader:
             x = data_batch
             y_true = data_batch.y
@@ -211,7 +212,7 @@ def train(model, num_epochs, dataset, device, classes, lr=0.001, scheduler=None,
                 y_pred.cpu().numpy().max(axis=1))
 
             y_true_all.extend(
-                y_true.to(device).flatten().cpu().numpy())
+                y_true.flatten().cpu().numpy())
 
         # calculate test accuracy, recall, precision and f1 score
         acc_value_test = sk_metrics.accuracy_score(y_true_all, y_pred_all)
@@ -274,7 +275,8 @@ if __name__ == "__main__":
     matplotlib.use('TkAgg')
     # open log.txt in append mode
 
-    device = torch.device('cpu')
+    #device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cpu"
 
     if False:
         DATASET_PATH = '/tmp_workspace/KITTI/processed'
@@ -282,7 +284,7 @@ if __name__ == "__main__":
         classes = dataset.classes
         print(classes)
     
-    if True:
+    else:
         DATASET_PATH = '/tmp_workspace/modelnet10_hdf5_2048'
         dataset = ModelNetDataset(DATASET_PATH)
         classes = dataset.classes
@@ -295,8 +297,8 @@ if __name__ == "__main__":
     #summary(model, (input_dim,))
 
     # train(graphSage, 10, dataset, device, classes)
-    # grid_search(10, dataset, device, classes)
+    grid_search(50, dataset, device, classes)
 
-    best_params = {'scheduler': 'ReduceLROnPlateau', 'batch_size': 32, 'hidden_nodes': 32}
-    model = GraphSage(hidden_dim=best_params['hidden_nodes'], output_dim=len(classes))
-    train(model, 10, dataset, device, classes, scheduler=best_params['scheduler'], batch_size=best_params['batch_size'])
+    #best_params = {'scheduler': 'ReduceLROnPlateau', 'batch_size': 32, 'hidden_nodes': 32}
+    #model = GraphSage(hidden_dim=best_params['hidden_nodes'], output_dim=len(classes))
+   # train(model, 100, dataset, device, classes, scheduler=None, batch_size=best_params['batch_size'])

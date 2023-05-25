@@ -2,9 +2,10 @@ from torch import nn
 from torch_geometric import nn as gnn
 from torch.functional import F
 from torch_geometric.nn import global_mean_pool as gnn_global_mean_pool
+import torch
     
 class GraphClassifier(nn.Module):
-    def __init__(self, hidden_dim, output_dim):
+    def __init__(self, hidden_dim, output_dim, dtype=torch.float32):
         super(GraphClassifier, self).__init__()
 
         self.gnn1 = gnn.GCNConv(-1, hidden_dim)
@@ -17,6 +18,9 @@ class GraphClassifier(nn.Module):
         #    nn.Linear(hidden_dim, output_dim),
         #    nn.Softmax(dim=1)
         #s)
+
+        # Apply dtype
+        self.type(dtype)
     
     def forward(self, x):
         x, edge_index, batch = x.x, x.edge_index, x.batch

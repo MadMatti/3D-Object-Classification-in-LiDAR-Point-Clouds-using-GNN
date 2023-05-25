@@ -11,7 +11,7 @@ from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import networkx as nx
-
+import torch_geometric.data as pyg
 import concurrent.futures
 
 class Dataset(GeometricDataset):
@@ -89,7 +89,7 @@ class Dataset(GeometricDataset):
 
         return A, label
 
-    def process_sample(self, graph_file, label_file):
+    def process_sample_old(self, graph_file, label_file):
         # Load the graph
         with open(graph_file, "rb") as f:
             G = pickle.load(f)
@@ -106,6 +106,34 @@ class Dataset(GeometricDataset):
         A.y = torch.tensor(label_id, dtype=torch.long)
 
         return A, label
+    
+    def process_sample(self, graph_file, label_file):
+        # Load the graph
+        with open(graph_file, "rb") as f:
+            G = pickle.load(f)
+            # Load the label
+        with open(label_file, 'r') as f:
+            label = f.read()
+            label = label.strip()
+            
+        label_id = self.classes.add(label)
+
+        # Node features
+        x = torch.tensor([features['x'] for _, features in G.nodes(data=True)], dtype=torch.float32)
+
+        # Edge features
+        edge_attr = torch.tensor([features['weight'] for _, _, features in G.edges(data=True)], dtype=torch.float32)
+
+        # Edges
+        edge_index = torch.tensor(list(G.edges), dtype=torch.long).t().contiguous().view(2, -1)
+
+        # Label
+        y = torch.tensor([label_id], dtype=torch.long)
+
+        # Create a PyTorch Geometric data object.
+        data = pyg.Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
+
+        return data, label
 
     def process(self):
         print("Processing dataset")

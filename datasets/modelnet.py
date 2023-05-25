@@ -11,6 +11,7 @@ import networkx as nx
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 from utils import knn_graph, resample_point_cloud
+import torch_geometric.data as pyg
 
 from tqdm import tqdm
 
@@ -105,28 +106,33 @@ class Dataset(GeometricDataset):
             # convert to adjacency matrix
             for i in tqdm(range(len(f['data'])), desc='Progress'):
                 item = f['data'][i]
-                label = f['label'][i][0]
+                label_id = f['label'][i][0]
 
                 # Resample the point cloud to 500 points
                 item = resample_point_cloud(item, 500)
 
                 # Cast to float64
-                item = item.astype(np.float64)
+                item = item.astype(np.float32)
 
                 # Convert the point cloud to a graph where each node represents a point and each edge represents the distance between two points
                 G = knn_graph(item, 5)
 
-                # Convert to torch geometric data
-                A = utils.from_networkx(G)
+                # Node features
+                x = torch.tensor([features['x'] for _, features in G.nodes(data=True)], dtype=torch.float32)
 
-                # Add label
-                A.y = torch.tensor(label, dtype=torch.long)
+                # Edge features
+                edge_attr = torch.tensor([features['weight'] for _, _, features in G.edges(data=True)], dtype=torch.float32)
 
-                ## Convert the label to a one-hot vector
-                #label = np.zeros(10)
-                #label[f['label'][i]] = 1
-                self.label.append(ID_TO_CLASS_NAME[label])
+                # Edges
+                edge_index = torch.tensor(list(G.edges), dtype=torch.long).t().contiguous().view(2, -1)
 
+                # Label
+                y = torch.tensor([label_id], dtype=torch.long)
+
+                # Create a PyTorch Geometric data object.
+                A = pyg.Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
+
+                self.label.append(ID_TO_CLASS_NAME[label_id])
                 self.data.append(A)
 
             f.close()

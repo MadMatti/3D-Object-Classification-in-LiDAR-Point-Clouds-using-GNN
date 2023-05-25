@@ -137,7 +137,7 @@ def knn_graph(data, k):
     # Sort distance matrix in ascending order and get indices of points
     idx = np.argsort(D, axis=1)
 
-    # Construct kNN graph, use 3D points as node features
+    # Construct kNN graph, use 3D coordinates as node features
     G = nx.Graph()
     for i in range(data.shape[0]):
         for j in idx[i, 1:k+1]:
