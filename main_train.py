@@ -14,6 +14,7 @@ from sklearn.model_selection import train_test_split
 from model import *
 from dataset import Dataset
 from datasets.kitti import Dataset as KittiDataset
+from datasets.modelnet import Dataset as ModelNetDataset
 from skorch import NeuralNetClassifier
 from sklearn.model_selection import GridSearchCV
 
@@ -275,10 +276,17 @@ if __name__ == "__main__":
 
     device = torch.device('cpu')
 
-    DATASET_PATH = '/Users/mattiaevangelisti/Documents/KITTI/processed'
-    dataset = KittiDataset(DATASET_PATH)
-    classes = dataset.classes
-    print(classes)
+    if False:
+        DATASET_PATH = '/tmp_workspace/KITTI/processed'
+        dataset = KittiDataset(DATASET_PATH)
+        classes = dataset.classes
+        print(classes)
+    
+    if True:
+        DATASET_PATH = '/tmp_workspace/modelnet10_hdf5_2048'
+        dataset = ModelNetDataset(DATASET_PATH)
+        classes = dataset.classes
+        print(classes)
 
     # GNN = GraphClassifier(hidden_dim=64, output_dim=len(classes))
     # graphSage = GraphSage(hidden_dim=64, output_dim=len(classes))
