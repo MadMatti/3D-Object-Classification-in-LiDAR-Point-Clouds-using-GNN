@@ -201,10 +201,10 @@ def preprocess_sample(point_cloud_file, label_file, calib_file, save_path, sampl
             continue
         
         # Resample the point cloud to have the same number of points
-        point_cloud_in_box = utils.resample_point_cloud(point_cloud_in_box, k=NUM_VERTEXES_PER_SAMPLE)
+        point_cloud_in_box = utils.resample_point_cloud(point_cloud_in_box, k=3000)
 
         # Create the graph
-        G = utils.knn_graph(point_cloud_in_box, k=NUM_EDGES_PER_VERTEX)
+        G = utils.knn_graph_old(point_cloud_in_box, k=NUM_EDGES_PER_VERTEX)
 
         # Save the graph
         with open(os.path.join(save_path, "X", f"graph_{sample_idx}_{j}.pkl"), "wb") as f:
@@ -218,28 +218,29 @@ def preprocess_sample(point_cloud_file, label_file, calib_file, save_path, sampl
         stats["classes"].append(class_name)
 
         # Plot the point cloud in 3D
-        if DEBUG:          
+        if True:          
             print("Class: {}, Number of points: {}".format(class_name, num_points))
 
             fig = plt.figure()
 
             # Plot the point cloud and the smaller object point cloud in two separate figures
             ax = fig.add_subplot(121, projection='3d')
-            plt.title("Point cloud (downsampled 1/5)")
+            plt.title("Original (" + class_name + ")")
             plt.xlabel("X")
             plt.ylabel("Y")
             ax.set_zlabel("Z")
-            ax.scatter(point_cloud[::5,0], point_cloud[::5,1], point_cloud[::5,2], s=0.1, c=z_coords[::5])
+            ax.scatter(point_cloud_in_box[:,0], point_cloud_in_box[:,1], point_cloud_in_box[:,2], s=2, c=point_cloud_in_box[:,2])
             # Set aspect ratio to 'equal'
             ax.set_aspect('equal')
             # Draw the 3D bounding box
             draw_box_3d(ax, bbox_3d)
 
             ax = fig.add_subplot(122, projection='3d')
-            plt.title("Isolated object (" + class_name + ")")
+            plt.title("Resampled (" + class_name + ")")
             plt.xlabel("X")
             plt.ylabel("Y")
             ax.set_zlabel("Z")
+            point_cloud_in_box = utils.resample_point_cloud(point_cloud_in_box, k=400)
             ax.scatter(point_cloud_in_box[:,0], point_cloud_in_box[:,1], point_cloud_in_box[:,2], s=2, c=point_cloud_in_box[:,2])
             # Set aspect ratio to 'equal'
             ax.set_aspect('equal')

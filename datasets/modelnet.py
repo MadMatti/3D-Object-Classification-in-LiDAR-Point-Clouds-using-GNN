@@ -111,26 +111,8 @@ class Dataset(GeometricDataset):
                 # Resample the point cloud to 500 points
                 item = resample_point_cloud(item, 500)
 
-                # Cast to float64
-                item = item.astype(np.float32)
-
-                # Convert the point cloud to a graph where each node represents a point and each edge represents the distance between two points
-                G = knn_graph(item, 5)
-
-                # Node features
-                x = torch.tensor([features['x'] for _, features in G.nodes(data=True)], dtype=torch.float32)
-
-                # Edge features
-                edge_attr = torch.tensor([features['weight'] for _, _, features in G.edges(data=True)], dtype=torch.float32)
-
-                # Edges
-                edge_index = torch.tensor(list(G.edges), dtype=torch.long).t().contiguous().view(2, -1)
-
-                # Label
-                y = torch.tensor([label_id], dtype=torch.long)
-
-                # Create a PyTorch Geometric data object.
-                A = pyg.Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
+                # Convert to graph with degree 5
+                A = knn_graph(item, label_id, k=5)
 
                 self.label.append(ID_TO_CLASS_NAME[label_id])
                 self.data.append(A)

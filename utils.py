@@ -1,6 +1,8 @@
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 import networkx as nx
+import torch_geometric.data as pyg
+import torch
 
 def ry_to_rz(ry):
     """
@@ -30,12 +32,12 @@ def get_bbox3d(obj_xyz_cam, rot_y, dimensions, tr_velo_to_cam, R_cam_to_rect):
 
     return np.array([obj_x, obj_y, obj_z, length, width, height, rot_z])
 
-def get_point_cloud_in_bbox3d(point_cloud, box):
+def get_point_cloud_in_bbox3d(point_cloud, bbox):
     """
     Get the point cloud that is inside the bounding box
     """
 
-    x, y, z, w, h, l, rz = box
+    x, y, z, w, l, h, rz = bbox
     
     # Rotate the point cloud to make it parallel to the axes
     rotation_matrix = np.array([[np.cos(rz), -np.sin(rz), 0],
@@ -101,6 +103,42 @@ def get_bbox3d_corners(bbox):
     
     return translated_corners
 
+def nx_to_torch_geometric(graph, label):
+    """
+    Convert a networkx graph to torch geometric data format
+    """
+
+    # Node features
+    x = torch.tensor([features['x'] for _, features in graph.nodes(data=True)], dtype=torch.float32)
+
+    # Edge features
+    edge_attr = torch.tensor([features['weight'] for _, _, features in G.edges(data=True)], dtype=torch.float32)
+
+    # Edges
+    edge_index = torch.tensor(list(graph.edges), dtype=torch.long).t().contiguous().view(2, -1)
+
+    # Label
+    y = torch.tensor([label], dtype=torch.long)
+
+    # Create a PyTorch Geometric data object.
+    data = pyg.Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
+
+    return data
+
+def point_cloud_to_torch_geometric(point_cloud, label, k):
+    """ Convert point cloud to torch geometric data format """
+
+    # Resample the point cloud
+    point_cloud = resample_point_cloud(point_cloud, k)
+
+    # Construct kNN graph
+    graph = knn_graph(point_cloud, k)
+
+    # Convert the graph to torch geometric data format
+    data = nx_to_torch_geometric(graph, label)
+
+    return data
+
 
 def resample_point_cloud(point_cloud, k):
     """
@@ -121,9 +159,9 @@ def resample_point_cloud(point_cloud, k):
 
     return point_cloud
 
-def knn_graph(data, k):
+def knn_graph_old(data, k):
     """
-    Construct a kNN graph from the given data
+    Construct a NetworkX graph from the given data
     :param data: point cloud data
     :param k: number of nearest neighbors
     :return: networkx graph
@@ -146,3 +184,48 @@ def knn_graph(data, k):
         G.nodes[i]['x'] = data[i]
 
     return G
+
+def knn_graph(data, label, k):
+    """
+    Construct a kNN graph from the given data
+    :param data: point cloud data
+    :param label: label of the point cloud
+    :param k: degree of the graph
+    :return: pytorch geometric data object
+    """
+    
+    # Create x from data
+    x = np.copy(data)
+
+    # Initialize edge_index
+    edge_index = np.empty((2, k*data.shape[0]), dtype=np.int64)
+
+    # Initialize edge_attr
+    edge_attr = np.empty((k*data.shape[0]), dtype=np.float32)
+
+    # Compute pairwise distance matrix
+    D = pdist(data)
+    #D = np.exp(-D)
+    D = 1/(1+D)
+    D = squareform(D)
+
+    # Sort distance matrix in ascending order and get indices of points
+    idx = np.argsort(D, axis=1)
+
+    # Construct kNN graph
+    for i in range(data.shape[0]):
+        for j in range(k):
+            edge_index[0, i*k+j] = i
+            edge_index[1, i*k+j] = idx[i, j]
+            edge_attr[i*k+j] = D[i, idx[i, j]]
+    
+    # Convert to torch tensors
+    x = torch.tensor(x, dtype=torch.float32)
+    edge_index = torch.tensor(edge_index, dtype=torch.long)
+    edge_attr = torch.tensor(edge_attr, dtype=torch.float32)
+    y = torch.tensor([label], dtype=torch.long)
+
+    # Create a PyTorch Geometric data object.
+    data = pyg.Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
+
+    return data 
