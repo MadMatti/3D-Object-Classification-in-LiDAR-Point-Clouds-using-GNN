@@ -85,8 +85,9 @@ def train(model, num_epochs, dataset, device, scheduler=None, batch_size=64, wei
 
         model.train()
         for data_batch in train_loader:
+            data_batch.x = data_batch.x.to(dtype)
             x = data_batch.to(device)
-            x.x = x.x.to(dtype)
+            #x.x = x.x.to(dtype)
 
             y_pred = model(x)
             train_loss = loss_fn(y_pred, x.y)
@@ -232,9 +233,10 @@ if __name__ == "__main__":
 
     #device = "cuda" if torch.cuda.is_available() else "cpu"
     device = "cuda"
+    device = torch.device('mps')
 
-    if False:
-        DATASET_PATH = '/tmp_workspace/KITTI/processed'
+    if True:
+        DATASET_PATH = '/Users/mattiaevangelisti/Documents/KITTI/processed'
         dataset = KittiDataset(DATASET_PATH)
         classes = dataset.classes
         print(classes)
@@ -250,7 +252,7 @@ if __name__ == "__main__":
 
     print("The model will be running on", device, "device\n")
 
-    grid_search(100, dataset, device, classes, model_class)
+    grid_search(10, dataset, device, classes, model_class)
 
     #best_params = {'scheduler': 'ReduceLROnPlateau', 'batch_size': 32, 'hidden_nodes': 32}
     #model = GraphSage(hidden_dim=best_params['hidden_nodes'], output_dim=len(classes))
